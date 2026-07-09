@@ -1,0 +1,415 @@
+// =============================================================================
+// SCHEMA PRISMA — Plataforma de Turnos Médicos
+// PostgreSQL. Diseñado para: integridad transaccional (turnos + pagos),
+// trazabilidad (auditoría de historia clínica) y extensibilidad por módulos.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// USUARIOS Y ROLES
+// Un User es la identidad (login). Los perfiles Patient/Doctor son entidades
+// separadas: un mismo User podría ser médico Y paciente (caso real frecuente).
+// -----------------------------------------------------------------------------
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String?    // null si el usuario entra solo por OAuth
+  phone        String?
+  roles        UserRole[] @default([PATIENT])
+  status       UserStatus @default(PENDING_VERIFICATION)
+
+  patientProfile PatientProfile?
+  doctorProfile  DoctorProfile?
+
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// -----------------------------------------------------------------------------
+// PERFILES
+// -----------------------------------------------------------------------------
+
+model PatientProfile {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName   String
+  lastName    String
+  documentId  String?   @unique // DNI
+  birthDate   DateTime?
+  healthInsurance String? // obra social / prepaga
+  insuranceNumber String?
+
+  appointments  Appointment[]
+  medicalRecord MedicalRecord?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lastName, firstName])
+  @@map("patient_profiles")
+}
+
+model Specialty {
+  id      String          @id @default(uuid())
+  name    String          @unique
+  slug    String          @unique
+  doctors DoctorProfile[]
+
+  @@map("specialties")
+}
+
+model DoctorProfile {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName     String
+  lastName      String
+  licenseNumber String    @unique // matrícula
+  bio           String?
+  photoUrl      String?
+  specialties   Specialty[]
+
+  // Configuración de seña — el médico decide si cobra o no
+  requiresDeposit    Boolean @default(false)
+  depositAmount      Decimal? @db.Decimal(10, 2)
+  depositCurrency    String   @default("ARS")
+  // Duración por defecto de un turno en minutos
+  defaultSlotMinutes Int      @default(30)
+  // Ventana de cancelación sin penalidad (horas antes del turno)
+  cancellationWindowHours Int @default(24)
+
+  schedules        DoctorSchedule[]
+  scheduleOverrides ScheduleOverride[]
+  appointments     Appointment[]
+  calendarAccounts CalendarAccount[]
+  recordEntries    MedicalRecordEntry[]
+  icsFeedToken     String? @unique // token para suscripción webcal:// (.ics)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lastName, firstName])
+  @@map("doctor_profiles")
+}
+
+// -----------------------------------------------------------------------------
+// AGENDA DEL MÉDICO
+// DoctorSchedule = disponibilidad recurrente semanal ("lunes 9 a 13").
+// ScheduleOverride = excepciones puntuales (vacaciones, feriado, día extra).
+// Los slots concretos se calculan en runtime; NO se materializan en DB
+// (evita generar millones de filas y simplifica cambios de agenda).
+// -----------------------------------------------------------------------------
+
+model DoctorSchedule {
+  id        String        @id @default(uuid())
+  doctorId  String
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  weekday   Int           // 0=domingo ... 6=sábado
+  startTime String        // "09:00" — hora local del consultorio
+  endTime   String        // "13:00"
+  slotMinutes Int?        // override de duración para esta franja
+  validFrom DateTime?
+  validTo   DateTime?
+
+  @@index([doctorId, weekday])
+  @@map("doctor_schedules")
+}
+
+enum OverrideType {
+  BLOCKED // vacaciones, feriado, bloqueo puntual
+  EXTRA   // disponibilidad extraordinaria
+}
+
+model ScheduleOverride {
+  id       String        @id @default(uuid())
+  doctorId String
+  doctor   DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  type     OverrideType
+  date     DateTime      @db.Date
+  startTime String?      // null = todo el día
+  endTime   String?
+  reason    String?
+
+  @@index([doctorId, date])
+  @@map("schedule_overrides")
+}
+
+// -----------------------------------------------------------------------------
+// TURNOS
+// El constraint único (doctorId, startAt) + transacción serializable en el
+// service es lo que previene doble reserva del mismo slot.
+// -----------------------------------------------------------------------------
+
+enum AppointmentStatus {
+  PENDING_PAYMENT // creado, esperando seña (si el médico la exige)
+  CONFIRMED
+  CANCELLED_BY_PATIENT
+  CANCELLED_BY_DOCTOR
+  NO_SHOW
+  COMPLETED
+}
+
+model Appointment {
+  id        String            @id @default(uuid())
+  patientId String
+  patient   PatientProfile    @relation(fields: [patientId], references: [id])
+  doctorId  String
+  doctor    DoctorProfile     @relation(fields: [doctorId], references: [id])
+  startAt   DateTime          // UTC
+  endAt     DateTime          // UTC
+  status    AppointmentStatus @default(CONFIRMED)
+  reason    String?           // motivo de consulta que carga el paciente
+  notes     String?           // notas internas del médico (NO es historia clínica)
+
+  payment   Payment?
+  calendarEvents CalendarEvent[]
+
+  cancelledAt     DateTime?
+  cancellationReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Un médico no puede tener dos turnos que arranquen en el mismo instante.
+  // El solapamiento parcial se valida en la capa de servicio dentro de una tx.
+  @@unique([doctorId, startAt])
+  @@index([patientId, startAt])
+  @@index([doctorId, startAt])
+  @@index([status])
+  @@map("appointments")
+}
+
+// -----------------------------------------------------------------------------
+// PAGOS / SEÑA
+// Diseñado detrás de una interfaz PaymentProvider: hoy Mercado Pago,
+// mañana Stripe, sin tocar el resto del sistema.
+// -----------------------------------------------------------------------------
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+  EXPIRED
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  appointmentId String        @unique
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id])
+  provider      String        // "mercadopago" | "stripe" | ...
+  providerRef   String?       // id de la preferencia/pago en el proveedor
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      String        @default("ARS")
+  status        PaymentStatus @default(PENDING)
+  paidAt        DateTime?
+  rawWebhookPayload Json?     // último webhook recibido, para debugging/auditoría
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provider, providerRef])
+  @@index([status])
+  @@map("payments")
+}
+
+// -----------------------------------------------------------------------------
+// HISTORIA CLÍNICA
+// MedicalRecord: 1 por paciente. MedicalRecordEntry: evoluciones inmutables
+// (append-only) firmadas por el médico. NUNCA se edita/borra una entrada:
+// se agrega una enmienda que referencia a la original (requisito médico-legal).
+// -----------------------------------------------------------------------------
+
+model MedicalRecord {
+  id        String         @id @default(uuid())
+  patientId String         @unique
+  patient   PatientProfile @relation(fields: [patientId], references: [id])
+  // Datos estructurados de base (alergias, antecedentes, medicación crónica)
+  allergies       String?
+  chronicConditions String?
+  currentMedication String?
+
+  entries MedicalRecordEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("medical_records")
+}
+
+model MedicalRecordEntry {
+  id        String        @id @default(uuid())
+  recordId  String
+  record    MedicalRecord @relation(fields: [recordId], references: [id])
+  doctorId  String
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id])
+  appointmentId String?   // opcional: entrada vinculada a un turno concreto
+
+  title     String
+  content   String        // evolución clínica (texto)
+  // Enmiendas: una entrada puede corregir a otra, nunca reemplazarla
+  amendsEntryId String?
+  amendsEntry   MedicalRecordEntry?  @relation("Amendments", fields: [amendsEntryId], references: [id])
+  amendments    MedicalRecordEntry[] @relation("Amendments")
+
+  attachments Attachment[]
+
+  createdAt DateTime @default(now())
+  // Sin updatedAt a propósito: las entradas son inmutables.
+
+  @@index([recordId, createdAt])
+  @@index([doctorId])
+  @@map("medical_record_entries")
+}
+
+model Attachment {
+  id       String             @id @default(uuid())
+  entryId  String
+  entry    MedicalRecordEntry @relation(fields: [entryId], references: [id])
+  fileName String
+  mimeType String
+  sizeBytes Int
+  storageKey String           @unique // key en R2/S3 — el archivo NUNCA se sirve directo, siempre por URL firmada
+
+  createdAt DateTime @default(now())
+
+  @@map("attachments")
+}
+
+// -----------------------------------------------------------------------------
+// SINCRONIZACIÓN DE CALENDARIOS
+// CalendarAccount: conexión OAuth del médico (Google).
+// CalendarEvent: mapeo turno <-> evento externo, para actualizar/borrar.
+// El feed .ics no necesita tablas: se genera on-the-fly con el icsFeedToken.
+// -----------------------------------------------------------------------------
+
+model CalendarAccount {
+  id           String        @id @default(uuid())
+  doctorId     String
+  doctor       DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  provider     String        // "google"
+  externalEmail String
+  accessTokenEnc  String     // cifrado en reposo (AES-256-GCM, ver CryptoService)
+  refreshTokenEnc String
+  tokenExpiresAt  DateTime
+  calendarId      String     @default("primary")
+
+  events CalendarEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([doctorId, provider, externalEmail])
+  @@map("calendar_accounts")
+}
+
+model CalendarEvent {
+  id              String          @id @default(uuid())
+  appointmentId   String
+  appointment     Appointment     @relation(fields: [appointmentId], references: [id])
+  accountId       String
+  account         CalendarAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  externalEventId String
+
+  createdAt DateTime @default(now())
+
+  @@unique([appointmentId, accountId])
+  @@map("calendar_events")
+}
+
+// -----------------------------------------------------------------------------
+// NOTIFICACIONES
+// -----------------------------------------------------------------------------
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model Notification {
+  id      String              @id @default(uuid())
+  userId  String
+  user    User                @relation(fields: [userId], references: [id])
+  channel NotificationChannel
+  template String             // "appointment_confirmed", "reminder_24h", etc.
+  payload Json
+  status  NotificationStatus  @default(QUEUED)
+  sentAt  DateTime?
+  error   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// -----------------------------------------------------------------------------
+// AUDITORÍA
+// Obligatoria para todo acceso/modificación de historia clínica.
+// -----------------------------------------------------------------------------
+
+model AuditLog {
+  id       String   @id @default(uuid())
+  userId   String?
+  user     User?    @relation(fields: [userId], references: [id])
+  action   String   // "medical_record.read", "appointment.cancel", etc.
+  entity   String   // "MedicalRecordEntry"
+  entityId String?
+  metadata Json?
+  ip       String?
+
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}
