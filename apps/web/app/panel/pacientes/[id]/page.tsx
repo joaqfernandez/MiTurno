@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale';
 import { useAddRecordEntry, useMedicalRecord, useMyPatients } from '@/lib/queries';
 import { initials } from '@/lib/format';
 import { Avatar, Badge, Button, Card, Field, Input, PageHeader, Skeleton, Textarea } from '@/components/ui';
-import { ChevronLeftIcon, FileTextIcon, PlusIcon, ShieldCheckIcon } from '@/components/icons';
+import { ChevronLeftIcon, FileTextIcon, PhoneIcon, PlusIcon, ShieldCheckIcon } from '@/components/icons';
 import type { MedicalRecordEntry } from '@/lib/types';
 
 function BaseDataItem({ label, value }: { label: string; value?: string }) {
@@ -103,12 +103,23 @@ export default function PatientRecordPage({ params }: { params: { id: string } }
       />
 
       {patient && (
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <Avatar name={initials(patient.firstName, patient.lastName)} className="h-12 w-12 text-sm" />
-          <p className="flex items-center gap-1.5 text-xs text-slate-500">
-            <ShieldCheckIcon className="h-4 w-4 text-success-600" />
-            Acceso auditado: cada lectura y escritura queda registrada con fecha, usuario e IP.
-          </p>
+          <div className="flex flex-col gap-1">
+            {patient.phone && (
+              <a
+                href={`tel:${patient.phone.replace(/\s+/g, '')}`}
+                className="flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700"
+              >
+                <PhoneIcon className="h-4 w-4" />
+                {patient.phone}
+              </a>
+            )}
+            <p className="flex items-center gap-1.5 text-xs text-slate-500">
+              <ShieldCheckIcon className="h-4 w-4 text-success-600" />
+              Acceso auditado: cada lectura y escritura queda registrada con fecha, usuario e IP.
+            </p>
+          </div>
         </div>
       )}
 

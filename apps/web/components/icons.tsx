@@ -200,6 +200,25 @@ export const GoogleIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const MapPinIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+    <circle cx="12" cy="10" r="3" />
+  </Icon>
+);
+
+export const NavigationIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m3 11 18-8-8 18-2-8-8-2Z" />
+  </Icon>
+);
+
+export const PhoneIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M13.4 10.6c1.2 1.2 2.1-.3 3.3.9s-1.7 3.6-2.5 3.6c-1.4 0-4-1.5-6.3-3.8S4.4 6.6 4.4 5.2c0-.8 2.4-3.7 3.6-2.5s-.3 2.1.9 3.3l-1.3 1.3c-.6.6.2 2 1.3 3.1s2.5 1.9 3.1 1.3Z" />
+  </Icon>
+);
+
 export const LockIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="4" y="11" width="16" height="10" rx="2" />

@@ -21,6 +21,8 @@ export interface RegisterData {
   firstName: string;
   lastName: string;
   licenseNumber?: string;
+  /** Obligatorio para pacientes: le permite al médico contactarlos ante una necesidad. */
+  phone?: string;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);

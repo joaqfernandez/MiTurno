@@ -11,6 +11,7 @@ import * as demo from './demo-data';
 import type {
   Appointment,
   Doctor,
+  DoctorLocation,
   DoctorSettings,
   MedicalRecord,
   Patient,
@@ -203,6 +204,65 @@ export function useSaveSchedule() {
         () => demo.setDemoSchedule(blocks),
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
+  });
+}
+
+export function useDoctorLocations() {
+  return useQuery({
+    queryKey: ['doctor-locations'],
+    queryFn: () =>
+      withFallback(
+        () => api<DoctorLocation[]>('/doctors/me/locations'),
+        () => demo.demoGetLocations(),
+      ),
+  });
+}
+
+export function useSaveDoctorLocations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (locations: DoctorLocation[]) =>
+      withFallback(
+        () => api<DoctorLocation[]>('/doctors/me/locations', { method: 'PUT', body: JSON.stringify({ locations }) }),
+        () => {
+          demo.demoSaveLocations(locations);
+          return locations;
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['doctor-locations'] });
+      qc.invalidateQueries({ queryKey: ['doctor'] });
+    },
+  });
+}
+
+export function useDoctorPhoto() {
+  return useQuery({
+    queryKey: ['doctor-photo'],
+    queryFn: () =>
+      withFallback(
+        () => api<{ photoUrl?: string }>('/doctors/me/photo').then((r) => r.photoUrl),
+        () => demo.demoGetPhoto(),
+      ),
+  });
+}
+
+export function useSaveDoctorPhoto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (photoUrl: string | undefined) =>
+      withFallback(
+        () => api<{ photoUrl?: string }>('/doctors/me/photo', { method: 'PUT', body: JSON.stringify({ photoUrl }) }),
+        () => {
+          demo.demoSavePhoto(photoUrl);
+          return { photoUrl };
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['doctor-photo'] });
+      qc.invalidateQueries({ queryKey: ['doctor'] });
+      qc.invalidateQueries({ queryKey: ['doctors'] });
+    },
   });
 }
 

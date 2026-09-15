@@ -20,6 +20,7 @@ function RegisterForm() {
     email: '',
     password: '',
     licenseNumber: '',
+    phone: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,10 @@ function RegisterForm() {
     setError(null);
     if (form.password.length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (role === 'PATIENT' && form.phone.trim() === '') {
+      setError('Ingresá un teléfono de contacto: tu médico lo va a usar si necesita comunicarse con vos.');
       return;
     }
     setLoading(true);
@@ -110,6 +115,25 @@ function RegisterForm() {
               onChange={set('password')}
             />
           </Field>
+
+          {role === 'PATIENT' && (
+            <Field
+              label="Teléfono"
+              htmlFor="phone"
+              required
+              helper="Tu médico lo va a usar para comunicarse con vos ante cualquier necesidad."
+            >
+              <Input
+                id="phone"
+                type="tel"
+                autoComplete="tel"
+                placeholder="Ej: 11 2345 6789"
+                required
+                value={form.phone}
+                onChange={set('phone')}
+              />
+            </Field>
+          )}
 
           {role === 'DOCTOR' && (
             <Field label="Matrícula" htmlFor="license" required helper="Ej: MN 112233 — se valida antes de publicar tu perfil">

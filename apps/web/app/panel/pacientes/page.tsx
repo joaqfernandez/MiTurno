@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { useMyPatients } from '@/lib/queries';
 import { formatDayShort, initials } from '@/lib/format';
 import { Avatar, Card, EmptyState, Input, PageHeader, Skeleton } from '@/components/ui';
-import { ChevronRightIcon, SearchIcon, UsersIcon } from '@/components/icons';
+import { ChevronRightIcon, PhoneIcon, SearchIcon, UsersIcon } from '@/components/icons';
 
 export default function PatientsPage() {
   const { data: patients, isLoading } = useMyPatients();
@@ -69,6 +69,12 @@ export default function PatientsPage() {
                       {p.documentId && `DNI ${p.documentId}`}
                       {p.healthInsurance && ` · ${p.healthInsurance}`}
                     </p>
+                    {p.phone && (
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
+                        <PhoneIcon className="h-3 w-3" />
+                        {p.phone}
+                      </p>
+                    )}
                   </div>
                   <div className="hidden text-right sm:block">
                     {p.lastVisit && (

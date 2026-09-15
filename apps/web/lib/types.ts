@@ -30,6 +30,18 @@ export interface Doctor {
   depositCurrency: string;
   defaultSlotMinutes: number;
   cancellationWindowHours: number;
+  locations?: DoctorLocation[];
+}
+
+export interface DoctorLocation {
+  id: string;
+  /** Nombre del lugar: "Consultorio particular", "Hospital Italiano", etc. */
+  name: string;
+  address: string;
+  /** Indicaciones para llegar: piso, entrada, consultorio, referencias. */
+  notes?: string;
+  /** Días en que atiende ahí. 0=domingo … 6=sábado. */
+  weekdays: number[];
 }
 
 export interface Slot {
@@ -64,6 +76,8 @@ export interface Patient {
   birthDate?: string;
   healthInsurance?: string;
   insuranceNumber?: string;
+  /** Teléfono de contacto, cargado al registrarse. El médico lo ve para comunicarse ante una necesidad. */
+  phone?: string;
   lastVisit?: string;
   visitCount?: number;
 }

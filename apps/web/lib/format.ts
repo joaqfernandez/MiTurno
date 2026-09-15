@@ -32,3 +32,13 @@ export function initials(firstName: string, lastName: string): string {
 }
 
 export const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+export const WEEKDAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+export function formatWeekdays(weekdays: number[]): string {
+  if (weekdays.length === 0) return 'Sin días asignados';
+  return [...weekdays]
+    .sort((a, b) => a - b)
+    .map((w) => WEEKDAYS_SHORT[w])
+    .join(', ');
+}

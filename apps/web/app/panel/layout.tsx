@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button, EmptyState, cx } from '@/components/ui';
-import { CalendarIcon, ClockIcon, LockIcon, SettingsIcon, UsersIcon } from '@/components/icons';
+import { CalendarIcon, ClockIcon, LockIcon, MapPinIcon, SettingsIcon, UsersIcon } from '@/components/icons';
 
 const NAV = [
   { href: '/panel', label: 'Agenda', icon: ClockIcon, exact: true },
   { href: '/panel/horarios', label: 'Mis horarios', icon: CalendarIcon },
+  { href: '/panel/ubicaciones', label: 'Ubicaciones', icon: MapPinIcon },
   { href: '/panel/pacientes', label: 'Pacientes', icon: UsersIcon },
   { href: '/panel/configuracion', label: 'Configuración', icon: SettingsIcon },
 ];

@@ -1,12 +1,85 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useDoctorSettings, useSaveDoctorSettings } from '@/lib/queries';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useDoctorPhoto, useDoctorSettings, useSaveDoctorPhoto, useSaveDoctorSettings } from '@/lib/queries';
 import { Button, Card, Field, Input, PageHeader, Select, Skeleton, cx } from '@/components/ui';
-import { CalendarIcon, CheckCircleIcon, CopyIcon, CreditCardIcon, SmartphoneIcon } from '@/components/icons';
+import { CalendarIcon, CheckCircleIcon, CopyIcon, CreditCardIcon, SmartphoneIcon, UserIcon } from '@/components/icons';
 import type { DoctorSettings } from '@/lib/types';
 
 const ICS_URL = 'webcal://api.miturno.app/api/calendar/feed/tu-token-privado.ics';
+
+function ProfilePhotoCard() {
+  const { data: photoUrl, isLoading } = useDoctorPhoto();
+  const save = useSaveDoctorPhoto();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  const current = preview ?? photoUrl ?? null;
+
+  function handleFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setPreview(dataUrl);
+      save.mutate(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleRemove() {
+    setPreview(null);
+    save.mutate(undefined);
+  }
+
+  return (
+    <Card className="p-6">
+      <h2 className="flex items-center gap-2 font-semibold text-slate-900">
+        <UserIcon className="h-5 w-5 text-brand-600" />
+        Foto de perfil
+      </h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Se muestra en los resultados de búsqueda y en tu perfil público. Es opcional.
+      </p>
+      <div className="mt-4 flex items-center gap-4">
+        {isLoading ? (
+          <Skeleton className="h-20 w-20 shrink-0 rounded-full" />
+        ) : current ? (
+          <img src={current} alt="Tu foto de perfil" className="h-20 w-20 shrink-0 rounded-full object-cover" />
+        ) : (
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <UserIcon className="h-8 w-8" />
+          </div>
+        )}
+        <div className="flex flex-col gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={handleFile}
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+            loading={save.isPending}
+            className="self-start"
+          >
+            {current ? 'Cambiar foto' : 'Subir foto'}
+          </Button>
+          {current && (
+            <Button variant="ghost" size="sm" onClick={handleRemove} className="self-start">
+              Quitar foto
+            </Button>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function Toggle({
   checked,
@@ -114,6 +187,8 @@ export default function SettingsPage() {
       />
 
       <div className="flex flex-col gap-5">
+        <ProfilePhotoCard />
+
         {/* Seña */}
         <Card className="p-6">
           <h2 className="flex items-center gap-2 font-semibold text-slate-900">

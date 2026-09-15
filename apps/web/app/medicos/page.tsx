@@ -5,43 +5,63 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { useDoctors, useSpecialties } from '@/lib/queries';
 import { formatMoney, initials } from '@/lib/format';
-import { Avatar, Badge, Button, Card, EmptyState, Input, Select, Skeleton } from '@/components/ui';
+import { Avatar, Badge, Button, Card, cx, EmptyState, Input, Select, Skeleton } from '@/components/ui';
 import { ArrowRightIcon, CreditCardIcon, SearchIcon, StethoscopeIcon } from '@/components/icons';
 import type { Doctor } from '@/lib/types';
 
 function DoctorCard({ doctor }: { doctor: Doctor }) {
   return (
-    <Card className="flex flex-col p-5 transition-shadow hover:shadow-card-hover sm:flex-row sm:items-center sm:gap-5">
-      <div className="flex flex-1 items-start gap-4">
-        <Avatar name={initials(doctor.firstName, doctor.lastName)} className="h-14 w-14 text-base" />
-        <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-slate-900">
-            {doctor.firstName} {doctor.lastName}
-          </h2>
-          <p className="text-xs text-slate-500">{doctor.licenseNumber}</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {doctor.specialties.map((s) => (
-              <Badge key={s.id} tone="brand">
-                {s.name}
-              </Badge>
-            ))}
+    <Card className="flex flex-col overflow-hidden transition-shadow hover:shadow-card-hover">
+      <div className="aspect-[4/5] w-full shrink-0 bg-brand-50">
+        {doctor.photoUrl ? (
+          <img
+            src={doctor.photoUrl}
+            alt={`${doctor.firstName} ${doctor.lastName}`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Avatar name={initials(doctor.firstName, doctor.lastName)} className="h-24 w-24 text-3xl" />
           </div>
-          {doctor.bio && <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">{doctor.bio}</p>}
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
-            <CreditCardIcon className="h-3.5 w-3.5" />
-            {doctor.requiresDeposit && doctor.depositAmount
-              ? `Reserva con seña de ${formatMoney(doctor.depositAmount, doctor.depositCurrency)} (se descuenta de la consulta)`
-              : 'Sin seña — reservás y queda confirmado'}
-          </p>
-        </div>
+        )}
       </div>
-      <div className="mt-4 sm:mt-0 sm:shrink-0">
-        <Link href={`/medicos/${doctor.id}`} className="block">
-          <Button className="w-full sm:w-auto">
-            Ver agenda
-            <ArrowRightIcon className="h-4 w-4" />
-          </Button>
-        </Link>
+
+      <div
+        className={cx(
+          'relative z-10 -mt-16 flex flex-1 flex-col rounded-t-3xl border-t border-white/60 bg-white/90 p-6 backdrop-blur-md',
+          'shadow-[0_-12px_28px_-14px_rgba(15,23,42,0.35)] supports-[backdrop-filter]:bg-white/55',
+        )}
+      >
+        <h2 className="text-lg font-semibold text-slate-900">
+          {doctor.firstName} {doctor.lastName}
+        </h2>
+        <p className="text-xs text-slate-500">{doctor.licenseNumber}</p>
+
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {doctor.specialties.map((s) => (
+            <Badge key={s.id} tone="brand">
+              {s.name}
+            </Badge>
+          ))}
+        </div>
+
+        {doctor.bio && <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-600">{doctor.bio}</p>}
+
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
+          <CreditCardIcon className="h-3.5 w-3.5 shrink-0" />
+          {doctor.requiresDeposit && doctor.depositAmount
+            ? `Seña de ${formatMoney(doctor.depositAmount, doctor.depositCurrency)}`
+            : 'Sin seña'}
+        </p>
+
+        <div className="mt-auto pt-5">
+          <Link href={`/medicos/${doctor.id}`} className="block">
+            <Button size="lg" className="w-full">
+              Ver agenda
+              <ArrowRightIcon className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </div>
     </Card>
   );
@@ -69,7 +89,7 @@ function DoctorSearch() {
   const specialtyName = specialties?.find((s) => s.slug === specialty)?.name;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
         {specialtyName ? `Especialistas en ${specialtyName}` : 'Buscar médicos'}
       </h1>
@@ -121,10 +141,8 @@ function DoctorSearch() {
       </form>
 
       {/* Resultados */}
-      <div className="mt-6 flex flex-col gap-4" aria-live="polite" aria-busy={isLoading}>
-        {isLoading && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-36" />)}
-
-        {!isLoading && doctors?.length === 0 && (
+      {!isLoading && doctors?.length === 0 ? (
+        <div className="mt-6">
           <EmptyState
             icon={<StethoscopeIcon className="h-8 w-8" />}
             title="No encontramos médicos con esos filtros"
@@ -141,10 +159,17 @@ function DoctorSearch() {
               </Button>
             }
           />
-        )}
-
-        {doctors?.map((d) => <DoctorCard key={d.id} doctor={d} />)}
-      </div>
+        </div>
+      ) : (
+        <div
+          className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
+          aria-live="polite"
+          aria-busy={isLoading}
+        >
+          {isLoading && Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[28rem]" />)}
+          {doctors?.map((d) => <DoctorCard key={d.id} doctor={d} />)}
+        </div>
+      )}
     </main>
   );
 }

@@ -6,6 +6,7 @@
 import type {
   Appointment,
   Doctor,
+  DoctorLocation,
   MedicalRecord,
   Patient,
   Slot,
@@ -13,6 +14,9 @@ import type {
   WeeklyBlock,
   DoctorSettings,
 } from './types';
+
+/** El médico con sesión iniciada en modo demo (ver lib/auth.tsx: demoLogin). */
+const CURRENT_DOCTOR_ID = 'd1';
 
 export const demoSpecialties: Specialty[] = [
   { id: 's1', name: 'Cardiología', slug: 'cardiologia' },
@@ -40,6 +44,23 @@ export const demoDoctors: Doctor[] = [
     depositCurrency: 'ARS',
     defaultSlotMinutes: 30,
     cancellationWindowHours: 24,
+    locations: [
+      {
+        id: 'loc-d1-1',
+        name: 'Consultorio particular',
+        address: 'Av. Santa Fe 3253, piso 4° "A", CABA',
+        notes: 'Timbre "4A". El edificio tiene ascensor; el consultorio queda frente al palier.',
+        weekdays: [1, 3, 5],
+      },
+      {
+        id: 'loc-d1-2',
+        name: 'Hospital Italiano de Buenos Aires',
+        address: 'Tte. Gral. Juan D. Perón 4190, CABA',
+        notes:
+          'Ingresar por Perón a la Torre de Consultorios Externos, planta baja. Preguntar en informes por Cardiología, consultorio 12.',
+        weekdays: [2, 4],
+      },
+    ],
   },
   {
     id: 'd2',
@@ -52,6 +73,15 @@ export const demoDoctors: Doctor[] = [
     depositCurrency: 'ARS',
     defaultSlotMinutes: 20,
     cancellationWindowHours: 12,
+    locations: [
+      {
+        id: 'loc-d2-1',
+        name: 'Consultorio particular',
+        address: 'Av. Cabildo 1842, piso 2° "B", CABA',
+        notes: 'Edificio con portero eléctrico. Subir por ascensor hasta el 2do piso.',
+        weekdays: [1, 2, 3, 4, 5],
+      },
+    ],
   },
   {
     id: 'd3',
@@ -64,6 +94,15 @@ export const demoDoctors: Doctor[] = [
     depositCurrency: 'ARS',
     defaultSlotMinutes: 30,
     cancellationWindowHours: 24,
+    locations: [
+      {
+        id: 'loc-d3-1',
+        name: 'Clínica del Niño',
+        address: 'Av. Rivadavia 5820, CABA',
+        notes: 'Entrada principal sobre Rivadavia. Sala de espera de Pediatría en planta baja.',
+        weekdays: [1, 2, 3, 4, 5],
+      },
+    ],
   },
   {
     id: 'd4',
@@ -76,6 +115,15 @@ export const demoDoctors: Doctor[] = [
     depositCurrency: 'ARS',
     defaultSlotMinutes: 30,
     cancellationWindowHours: 6,
+    locations: [
+      {
+        id: 'loc-d4-1',
+        name: 'Sanatorio Güemes',
+        address: 'French 3170, CABA',
+        notes: 'Ingresar por guardia y dirigirse a Consultorios Externos, 1er piso, sector B.',
+        weekdays: [1, 2, 3, 4, 5],
+      },
+    ],
   },
   {
     id: 'd5',
@@ -89,6 +137,15 @@ export const demoDoctors: Doctor[] = [
     depositCurrency: 'ARS',
     defaultSlotMinutes: 30,
     cancellationWindowHours: 48,
+    locations: [
+      {
+        id: 'loc-d5-1',
+        name: 'Consultorio particular',
+        address: 'Av. Las Heras 2934, piso 6° "C", CABA',
+        notes: 'Portero eléctrico "6C". El edificio tiene rampa de acceso.',
+        weekdays: [2, 3, 4],
+      },
+    ],
   },
   {
     id: 'd6',
@@ -102,6 +159,15 @@ export const demoDoctors: Doctor[] = [
     depositCurrency: 'ARS',
     defaultSlotMinutes: 20,
     cancellationWindowHours: 24,
+    locations: [
+      {
+        id: 'loc-d6-1',
+        name: 'Clínica del Deporte',
+        address: 'Av. Cabildo 2721, CABA',
+        notes: 'Consultorios de Traumatología en el 3er piso. Hay ascensor y escalera.',
+        weekdays: [1, 2, 4, 5],
+      },
+    ],
   },
   {
     id: 'd7',
@@ -114,6 +180,15 @@ export const demoDoctors: Doctor[] = [
     depositCurrency: 'ARS',
     defaultSlotMinutes: 15,
     cancellationWindowHours: 12,
+    locations: [
+      {
+        id: 'loc-d7-1',
+        name: 'Instituto de la Visión',
+        address: 'Av. Córdoba 4890, CABA',
+        notes: 'Recepción en planta baja; indican el consultorio según disponibilidad.',
+        weekdays: [1, 2, 3, 4, 5],
+      },
+    ],
   },
   {
     id: 'd8',
@@ -127,6 +202,15 @@ export const demoDoctors: Doctor[] = [
     depositCurrency: 'ARS',
     defaultSlotMinutes: 45,
     cancellationWindowHours: 48,
+    locations: [
+      {
+        id: 'loc-d8-1',
+        name: 'Consultorio particular',
+        address: 'Av. Pueyrredón 1435, piso 3° "D", CABA',
+        notes: 'Timbre "3D". Por favor llegar 5 minutos antes del horario reservado.',
+        weekdays: [1, 3, 5],
+      },
+    ],
   },
 ];
 
@@ -144,6 +228,30 @@ export let demoSchedule: WeeklyBlock[] = [
 
 export function setDemoSchedule(blocks: WeeklyBlock[]) {
   demoSchedule = blocks;
+}
+
+// --- Ubicaciones de atención del médico logueado ---------------------------
+// Viven como parte del objeto Doctor (igual que en el modelo real) para que
+// el perfil público y el panel de configuración lean siempre la misma fuente.
+
+export function demoGetLocations(): DoctorLocation[] {
+  return demoDoctors.find((d) => d.id === CURRENT_DOCTOR_ID)?.locations ?? [];
+}
+
+export function demoSaveLocations(locations: DoctorLocation[]) {
+  const doctor = demoDoctors.find((d) => d.id === CURRENT_DOCTOR_ID);
+  if (doctor) doctor.locations = locations;
+}
+
+// --- Foto de perfil del médico logueado -------------------------------------
+
+export function demoGetPhoto(): string | undefined {
+  return demoDoctors.find((d) => d.id === CURRENT_DOCTOR_ID)?.photoUrl;
+}
+
+export function demoSavePhoto(photoUrl: string | undefined) {
+  const doctor = demoDoctors.find((d) => d.id === CURRENT_DOCTOR_ID);
+  if (doctor) doctor.photoUrl = photoUrl;
 }
 
 export let demoSettings: DoctorSettings = {
@@ -294,11 +402,11 @@ export const demoDoctorAgenda: Appointment[] = [
 ];
 
 export const demoPatients: Patient[] = [
-  { id: 'p1', firstName: 'Roberto', lastName: 'Giménez', documentId: '22.456.789', healthInsurance: 'OSDE 310', lastVisit: at(-15, 9), visitCount: 8 },
-  { id: 'p2', firstName: 'Ana', lastName: 'Castro', documentId: '30.111.222', healthInsurance: 'Swiss Medical', lastVisit: at(0, 9, 30), visitCount: 1 },
-  { id: 'p3', firstName: 'Julián', lastName: 'Paz', documentId: '35.987.654', healthInsurance: 'IOMA', lastVisit: at(-60, 11), visitCount: 3 },
-  { id: 'p4', firstName: 'Marta', lastName: 'Villalba', documentId: '14.222.333', healthInsurance: 'PAMI', lastVisit: at(-30, 15), visitCount: 12 },
-  { id: 'p5', firstName: 'Sofía', lastName: 'Duarte', documentId: '38.444.555', healthInsurance: 'Galeno', lastVisit: at(-7, 10), visitCount: 2 },
+  { id: 'p1', firstName: 'Roberto', lastName: 'Giménez', documentId: '22.456.789', healthInsurance: 'OSDE 310', phone: '11 4455-6677', lastVisit: at(-15, 9), visitCount: 8 },
+  { id: 'p2', firstName: 'Ana', lastName: 'Castro', documentId: '30.111.222', healthInsurance: 'Swiss Medical', phone: '11 2233-4455', lastVisit: at(0, 9, 30), visitCount: 1 },
+  { id: 'p3', firstName: 'Julián', lastName: 'Paz', documentId: '35.987.654', healthInsurance: 'IOMA', phone: '11 6677-8899', lastVisit: at(-60, 11), visitCount: 3 },
+  { id: 'p4', firstName: 'Marta', lastName: 'Villalba', documentId: '14.222.333', healthInsurance: 'PAMI', phone: '11 3344-5566', lastVisit: at(-30, 15), visitCount: 12 },
+  { id: 'p5', firstName: 'Sofía', lastName: 'Duarte', documentId: '38.444.555', healthInsurance: 'Galeno', phone: '11 5566-7788', lastVisit: at(-7, 10), visitCount: 2 },
 ];
 
 export const demoRecords: Record<string, MedicalRecord> = {
