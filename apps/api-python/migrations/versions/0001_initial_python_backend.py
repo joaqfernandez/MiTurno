@@ -1,7 +1,7 @@
 """initial_python_backend
 
 Revision ID: 0001
-Revises: 
+Revises:
 Create Date: 2026-09-18 14:47:35.587023
 
 """
