@@ -1,41 +1,40 @@
-# Roadmap de implementación
+# Roadmap después de la migración Python
 
-## Fase 1 — Núcleo funcional (semanas 1-3)
-- [x] Modelo de datos completo (Prisma)
-- [x] Auth con roles (JWT + refresh rotativo)
-- [x] Agenda del médico + cálculo de disponibilidad
-- [x] Reserva de turno anti doble-booking
-- [ ] Frontend: registro/login, búsqueda de médicos, selección de slot
-- [ ] Frontend: vista calendario del paciente y del médico (sugerido: FullCalendar o react-big-calendar)
-- [ ] Tests: AvailabilityService (unit) + flujo de reserva (e2e con DB de test)
+Las marcas indican implementación local verificada; las integraciones externas necesitan además validación con sus proveedores. Ver [evidencias y deuda](MIGRACION_PYTHON.md).
 
-## Fase 2 — Pagos y notificaciones (semanas 3-5)
-- [x] Interfaz PaymentProvider + Mercado Pago (Checkout Pro)
-- [x] Webhook idempotente + expiración de señas impagas (cron)
-- [ ] Validar firma x-signature del webhook (MP_WEBHOOK_SECRET)
-- [ ] Integrar Resend (email) y Twilio (SMS) en NotificationsProcessor
-- [ ] Templates de email (confirmación, recordatorio 24h, cancelación)
+## Núcleo
+- [x] Backend FastAPI/SQLAlchemy, migración Alembic y PostgreSQL nuevo.
+- [x] Registro/login, refresh rotativo, roles y activación administrativa.
+- [x] Perfil paciente con campos permitidos y protección contra cambios de roles/relaciones.
+- [x] Agenda, disponibilidad, reserva, cancelación y exclusión de solapamientos.
+- [x] Frontend TypeScript conectado a la API y caché aislada por sesión.
+- [x] Seed pequeño y persistente: dos pacientes, dos médicos y un administrador.
+- [x] Tests API, concurrencia PostgreSQL, cliente HTTP web y recorridos de navegador.
 
-## Fase 3 — Historia clínica completa (semanas 5-7)
-- [x] Entradas inmutables + enmiendas + auditoría
-- [ ] Upload de adjuntos a Cloudflare R2 (presigned URLs, nunca pasar el archivo por la API)
-- [ ] Frontend: vista de historia clínica para médico y paciente
-- [ ] Export PDF de historia clínica (requisito frecuente)
+## Pagos, notificaciones y calendarios
+- [x] PaymentProvider, adaptador Mercado Pago, firma webhook, importe e idempotencia.
+- [x] Expiración de señas y trabajos de reembolso.
+- [x] Adaptadores Resend/Twilio y plantillas simples de notificación.
+- [x] Cola transaccional PostgreSQL/Python con reintentos; sustituye BullMQ.
+- [x] OAuth Google con tokens cifrados, state de un uso y sync por cola.
+- [x] Feed ICS rotable y descarga ICS por turno del paciente.
+- [ ] Validación end-to-end con cuentas sandbox de cada proveedor.
+- [ ] Conciliación manual de cobros duplicados/conflictivos.
 
-## Fase 4 — Calendarios (semanas 7-8)
-- [x] OAuth Google Calendar (tokens cifrados) + push/delete de eventos
-- [x] Feed .ics para Apple Calendar / Outlook
-- [ ] Mover sync de calendario a cola BullMQ con reintentos (hoy es best-effort inline)
-- [ ] Botón "Agregar a mi calendario" para el PACIENTE (archivo .ics por turno, sin OAuth)
+## Historia clínica
+- [x] Entradas inmutables, enmiendas y auditoría atómica respaldada por triggers.
+- [x] Pantallas de lectura/escritura del médico y lectura del paciente.
+- [ ] Adjuntos privados R2 con autorización de carga/descarga.
+- [ ] Exportación PDF.
+- [ ] Registro de accesos denegados y definición de permisos administrativos mínimos.
 
-## Fase 5 — Producción
-- [ ] Sentry + logs estructurados (Axiom/Better Stack)
-- [ ] Rate limiting (@nestjs/throttler) en auth y endpoints públicos
-- [ ] Backups automáticos de DB + prueba de restore
-- [ ] Términos, consentimiento de datos de salud (Ley 25.326 AR + habilitación de historia clínica digital Ley 26.529/27.706)
-- [ ] Panel admin (verificación de matrículas de médicos antes de activar perfiles)
+## Antes de producción
+- [ ] Resolver avisos de seguridad de Next.js y dependencias web.
+- [ ] Monitoreo y logs estructurados sin datos sensibles.
+- [ ] Rate limiting compartido para varias réplicas.
+- [ ] Backups automáticos y prueba de restauración.
+- [ ] Pruebas de carga, recuperación del worker y proveedores reales.
+- [ ] Consentimiento, términos y requisitos de tratamiento de datos de salud.
+- [ ] Completar controles UI de excepciones de agenda y zonas horarias.
 
-## Deuda técnica aceptada (a propósito)
-- El frontend es un esqueleto: la prioridad fue que el dominio de backend quede bien diseñado primero.
-- Google OAuth para *login* de usuarios (además de calendario) queda para cuando haya tracción.
-- No hay multi-consultorio/clínicas (un médico = una agenda). El modelo lo soporta agregando una entidad `Location` si hace falta.
+No están implementados login social ni gestión integral de clínicas. Las sedes de atención sí tienen modelo/API, pero eso no equivale a administrar una clínica multiusuario.

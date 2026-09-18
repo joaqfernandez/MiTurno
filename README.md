@@ -1,130 +1,69 @@
-# Plataforma de Turnos Médicos
+# MiTurno
 
-Sistema de reserva de turnos médicos con historia clínica, roles paciente/médico, calendario sincronizable (Google Calendar + feed `.ics` para iPhone/Outlook) y cobro de seña opcional vía Mercado Pago.
+Backend **Python / FastAPI / SQLAlchemy / PostgreSQL**, frontend **TypeScript / Next.js**. El backend NestJS fue retirado; su código queda en el historial Git.
 
-Stack: **NestJS + Prisma + PostgreSQL** (backend) · **Next.js + Tailwind** (frontend) · **Redis + BullMQ** (colas). Las decisiones y sus alternativas están documentadas en `arquitectura-stack-turnos-medicos.md` del proyecto.
+## Ejecutar en esta máquina
 
----
-
-## Estructura del monorepo
-
-```
-turnos-medicos/
-├── apps/
-│   ├── api/                      # Backend NestJS (monolito modular)
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma     # ★ Modelo de datos completo — leer primero
-│   │   │   └── seed.ts           # Especialidades iniciales
-│   │   └── src/
-│   │       ├── common/           # Guards, decorators, CryptoService (AES-256-GCM)
-│   │       ├── prisma/           # PrismaService global
-│   │       └── modules/          # Un módulo = un dominio de negocio
-│   │           ├── auth/             # Registro/login/refresh (JWT + rotación)
-│   │           ├── users/            # /users/me
-│   │           ├── doctors/          # Búsqueda pública, config de agenda y seña
-│   │           ├── patients/         # Perfil paciente + "mis pacientes" (médico)
-│   │           ├── appointments/     # ★ Disponibilidad + reserva anti doble-booking
-│   │           ├── medical-records/  # ★ Historia clínica inmutable + auditoría
-│   │           ├── payments/         # ★ Interfaz PaymentProvider → Mercado Pago
-│   │           ├── calendar/         # Google Calendar OAuth + feed .ics
-│   │           └── notifications/    # Colas BullMQ + crons (recordatorios, expiración de señas)
-│   └── web/                      # Frontend Next.js (esqueleto)
-├── docs/ROADMAP.md               # Fases de implementación
-├── docker-compose.yml            # Postgres + Redis locales
-└── .env.example                  # Todas las variables necesarias
-```
-
-## Puesta en marcha
-
-Requisitos: Node 20+, Docker.
+Con Docker Desktop abierto, desde la raíz:
 
 ```bash
-# 1. Infraestructura local
-docker compose up -d
-
-# 2. Variables de entorno
-cp .env.example apps/api/.env
-
-# 3. Dependencias
-npm install
-
-# 4. Base de datos
-cd apps/api
-npx prisma migrate dev --name init
-npx prisma generate
-npm run seed
-
-# 5. Levantar todo (desde la raíz)
-npm run dev:api    # http://localhost:3000/api
-npm run dev:web    # http://localhost:3001
+docker compose -p miturno-python up -d --wait
+npm run dev
 ```
 
-## Flujos principales
+Abrí **http://localhost:3001**. El comando inicia web, API (puerto 3000) y worker; Ctrl+C detiene los tres. La base nueva ya tiene datos ficticios persistentes. No hace falta activar el virtualenv manualmente.
 
-### Reserva de turno (con o sin seña)
+| Rol | Email | Contraseña de desarrollo |
+| --- | --- | --- |
+| Paciente | ana@example.com | DemoTurnos2026! |
+| Otro paciente | lucas@example.com | DemoTurnos2026! |
+| Médica | valeria@example.com | DemoTurnos2026! |
+| Médico | pedro@example.com | DemoTurnos2026! |
+| Administrador | admin@example.com | DemoTurnos2026! |
 
+Ingresá con estas cuentas usando el formulario normal. Los botones «demo» son una simulación visual separada; no guardan en PostgreSQL. Ana tiene una historia ficticia y un turno; los médicos atienden de lunes a viernes, 9–13, sin seña para probar sin credenciales externas.
+
+## Instalación desde cero
+
+Verificado con Python 3.14.5, Node 24 y Docker Desktop.
+
+```bash
+npm ci
+npm run setup:api
+docker compose -p miturno-python up -d --wait
+npm run db:migrate
+npm run db:seed
+npm run dev
 ```
-Paciente elige slot → POST /appointments
-  ├─ médico SIN seña → estado CONFIRMED → notificaciones + sync calendario
-  └─ médico CON seña → estado PENDING_PAYMENT → checkoutUrl de Mercado Pago
-        └─ webhook MP aprobado → CONFIRMED → notificaciones + sync
-        └─ 30 min sin pagar → cron libera el slot automáticamente
+
+`setup:api` instala dependencias y genera `apps/api-python/.env` con secretos aleatorios si no existe. El seed conserva los datos si ya fue cargado; no reinicia tus cambios. Está bloqueado en producción. PostgreSQL usa puerto **55432**, base **miturno_python** y volumen independiente: no reemplaza la base anterior.
+
+Si no inicia, verificá Docker y que 3000/3001 estén libres. Probá `npm run dev:api`, `npm run dev:web` y `npm run worker:api` en terminales separadas para identificar el proceso que falla. Salud: http://localhost:3000/api/health. Documentación de endpoints: http://localhost:3000/docs.
+
+## Pruebas
+
+```bash
+npm run test:api
+npm run test:web
+npx playwright install chromium
+npm run test:e2e
+npm run build:web
 ```
 
-La doble reserva es **imposible por diseño**: transacción `SERIALIZABLE` + constraint único `(doctorId, startAt)` en base de datos. Si dos pacientes confirman a la vez, uno recibe `409 Conflict`.
+Las pruebas habituales usan bases SQLite temporales. Para concurrencia e integridad en PostgreSQL, con Docker iniciado:
 
-### Disponibilidad
+```bash
+cd apps/api-python
+TEST_POSTGRES_URL=postgresql+psycopg://turnos:turnos_dev@127.0.0.1:55432/postgres .venv/bin/python -m pytest tests/test_postgres.py
+```
 
-Los slots **no se materializan en DB**: se calculan en runtime desde la agenda recurrente (`DoctorSchedule`), las excepciones (`ScheduleOverride`: vacaciones, feriados, días extra) y los turnos ya tomados. Un cambio de agenda del médico impacta al instante.
+Crean y eliminan bases exclusivas de prueba; no modifican la demo. Los tests de navegador usan API/Next en 3100/3101 y una SQLite temporal.
 
-### Historia clínica
+## Código y estado
 
-- Entradas **inmutables** (append-only): nunca se editan ni borran; una corrección es una *enmienda* que referencia a la original. Requisito médico-legal.
-- Acceso: el paciente lee lo suyo; el médico lee/escribe **solo si tiene relación asistencial** (al menos un turno con ese paciente).
-- **Todo acceso queda auditado** en `AuditLog` (quién, qué, cuándo, desde qué IP).
-- Adjuntos (estudios, imágenes) van a storage S3-compatible por URL firmada; en DB solo se guarda la key.
+- [Guía del backend Python](apps/api-python/README.md)
+- [Migración, evidencias y límites](docs/MIGRACION_PYTHON.md)
+- [Roadmap y deuda pendiente](docs/ROADMAP.md)
+- [Auditoría histórica del backend anterior](docs/AUDITORIA.md)
 
-### Calendario en el celular
-
-- **Google Calendar**: el médico conecta su cuenta por OAuth (`GET /calendar/google/connect`). Los tokens se guardan **cifrados** (AES-256-GCM). Cada turno confirmado se crea/borra en su Google Calendar.
-- **iPhone / Apple Calendar / Outlook**: suscripción estándar `.ics` — `webcal://tu-api/api/calendar/feed/{token}.ics`. Sin OAuth, se actualiza sola, y el token es rotable si se filtra.
-
-### Seña configurable por médico
-
-Cada médico decide en su perfil: `requiresDeposit`, `depositAmount`, `cancellationWindowHours`. Si el paciente cancela dentro de la ventana permitida (o cancela el médico), la seña se **reembolsa automáticamente**. El proveedor de pagos está detrás de la interfaz `PaymentProvider`: agregar Stripe mañana no toca ni una línea fuera del módulo `payments`.
-
-## API — endpoints principales
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| POST | `/api/auth/register` | — | Registro (rol PATIENT o DOCTOR) |
-| POST | `/api/auth/login` | — | Login → access + refresh token |
-| GET | `/api/doctors?specialty=&q=` | — | Búsqueda pública de médicos |
-| GET | `/api/appointments/availability/:doctorId?from=&to=` | — | Slots disponibles |
-| POST | `/api/appointments` | Paciente | Reservar turno |
-| GET | `/api/appointments/me?from=&to=` | Ambos | Mi agenda (paciente o médico) |
-| DELETE | `/api/appointments/:id` | Ambos | Cancelar (con política de reembolso) |
-| GET | `/api/patients/of-my-practice` | Médico | Historial de mis pacientes |
-| GET | `/api/medical-records/:patientId` | Según regla | Leer historia clínica (auditado) |
-| POST | `/api/medical-records/entries` | Médico | Nueva evolución / enmienda |
-| PATCH | `/api/doctors/:id/settings` | Médico | Config de seña, duración de turno, etc. |
-| PUT | `/api/doctors/:id/schedule` | Médico | Definir agenda semanal |
-| GET | `/api/calendar/google/connect` | Médico | Iniciar OAuth con Google |
-| GET | `/api/calendar/feed/:token.ics` | Token | Feed para Apple/Outlook |
-| POST | `/api/payments/webhooks/mercadopago` | Firma | Webhook de Mercado Pago |
-
-## Deploy sugerido (etapa inicial)
-
-- **API**: Railway o Render (con el Redis administrado del mismo proveedor).
-- **DB**: Neon o Supabase (Postgres administrado, con branching para testing).
-- **Web**: Vercel.
-- **Storage**: Cloudflare R2.
-- Configurar `MP_ACCESS_TOKEN` de producción y el `notification_url` público del webhook.
-
-## Pendientes conscientes (ver docs/ROADMAP.md)
-
-- Validación de firma `x-signature` del webhook de MP (marcado con TODO).
-- Integración real de Resend/Twilio en `NotificationsProcessor` (hoy loguea).
-- Upload de adjuntos a R2 con URLs firmadas (modelo `Attachment` ya listo).
-- Frontend: pantallas de búsqueda, reserva, panel médico y paciente.
-- Tests: unit de `AvailabilityService` y e2e del flujo de reserva son los primeros a escribir.
+Pagos, Google Calendar y notificaciones tienen adaptadores implementados, pero necesitan credenciales y validación con los proveedores. Sin configuración no se simulan cobros ni envíos exitosos. Adjuntos y exportación PDF siguen pendientes. Esta migración no equivale a una habilitación para producción.

@@ -1,0 +1,15 @@
+# Dependencias directas del backend; requirements.txt fija también las transitivas.
+fastapi>=0.115,<1
+pydantic>=2.10,<3
+PyJWT>=2.10,<3
+uvicorn>=0.34,<1
+pytest>=8,<10
+httpx>=0.28,<1
+SQLAlchemy>=2.0,<2.1
+alembic>=1.14,<2
+psycopg[binary]>=3.2,<4
+argon2-cffi>=23,<26
+cryptography>=44
+python-dotenv>=1,<2
+email-validator>=2,<3
+icalendar>=6,<8

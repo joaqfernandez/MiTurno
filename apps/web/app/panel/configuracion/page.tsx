@@ -6,7 +6,7 @@ import { Button, Card, Field, Input, PageHeader, Select, Skeleton, cx } from '@/
 import { CalendarIcon, CheckCircleIcon, CopyIcon, CreditCardIcon, SmartphoneIcon, UserIcon } from '@/components/icons';
 import type { DoctorSettings } from '@/lib/types';
 
-const ICS_URL = 'webcal://api.miturno.app/api/calendar/feed/tu-token-privado.ics';
+import { api, isDemoMode } from '@/lib/api';
 
 function ProfilePhotoCard() {
   const { data: photoUrl, isLoading } = useDoctorPhoto();
@@ -131,6 +131,24 @@ export default function SettingsPage() {
   const [form, setForm] = useState<DoctorSettings | null>(null);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [icsUrl, setIcsUrl] = useState('');
+  const [calendarError, setCalendarError] = useState('');
+  useEffect(() => {
+    if (!isDemoMode()) api<{ url: string }>('/calendar/feed-url').then(result => setIcsUrl(result.url)).catch(error => setCalendarError(error.message));
+  }, []);
+  async function connectGoogle() {
+    try {
+      if (isDemoMode()) throw new Error('Ingresá con una cuenta real para conectar tu calendario.');
+      const result = await api<{ url: string }>('/calendar/google/connect');
+      window.location.assign(result.url);
+    } catch (error) { setCalendarError(error instanceof Error ? error.message : 'No se pudo conectar'); }
+  }
+  async function rotateFeed() {
+    try {
+      const result = await api<{ url: string }>('/calendar/feed/rotate', { method: 'POST' });
+      setIcsUrl(result.url);
+    } catch (error) { setCalendarError(error instanceof Error ? error.message : 'No se pudo renovar el enlace'); }
+  }
 
   useEffect(() => {
     if (data && !form) setForm(data);
@@ -149,7 +167,7 @@ export default function SettingsPage() {
 
   async function copyIcs() {
     try {
-      await navigator.clipboard.writeText(ICS_URL);
+      await navigator.clipboard.writeText(icsUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
     } catch {
@@ -267,6 +285,7 @@ export default function SettingsPage() {
             <SmartphoneIcon className="h-5 w-5 text-brand-600" />
             Calendario en tu celular
           </h2>
+          {calendarError && <p role="alert" className="mt-3 text-sm text-red-700">{calendarError}</p>}
           <div className="mt-4 flex flex-col gap-6">
             <div>
               <h3 className="text-sm font-medium text-slate-900">Google Calendar</h3>
@@ -274,12 +293,12 @@ export default function SettingsPage() {
                 Conectá tu cuenta y cada turno confirmado se crea (y se borra) solo en tu calendario. Los tokens se
                 guardan cifrados.
               </p>
-              <a
-                href="/api/calendar/google/connect"
+              <button
+                onClick={connectGoogle}
                 className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50"
               >
                 Conectar Google Calendar
-              </a>
+              </button>
             </div>
             <div className="border-t border-slate-200 pt-5">
               <h3 className="text-sm font-medium text-slate-900">iPhone / Apple Calendar / Outlook</h3>
@@ -289,12 +308,13 @@ export default function SettingsPage() {
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <code className="flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
-                  {ICS_URL}
+                  {icsUrl || 'Ingresá con una cuenta real para obtener tu enlace'}
                 </code>
-                <Button variant="secondary" size="sm" onClick={copyIcs} className="min-h-10">
+                <Button variant="secondary" size="sm" disabled={!icsUrl} onClick={copyIcs} className="min-h-10">
                   {copied ? <CheckCircleIcon className="h-4 w-4 text-success-600" /> : <CopyIcon className="h-4 w-4" />}
                   {copied ? 'Copiado' : 'Copiar'}
                 </Button>
+                <Button variant="secondary" size="sm" disabled={!icsUrl} onClick={rotateFeed}>Renovar enlace</Button>
               </div>
             </div>
           </div>

@@ -1,3 +1,5 @@
+> Documento histórico del backend NestJS. Para el estado posterior a la migración Python, ver [MIGRACION_PYTHON.md](MIGRACION_PYTHON.md).
+
 # Auditoría del proyecto — 17 de septiembre de 2026
 
 Base: commit `0fd3a85` y árbol de trabajo local. El cambio previo en `package-lock.json` pertenece al estado recibido. No se modificó código de producto ni se actualizaron los checks del roadmap.

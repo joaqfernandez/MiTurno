@@ -42,9 +42,13 @@ function RegisterForm() {
     setLoading(true);
     try {
       const session = await register({ ...form, role });
+      if (!session) {
+        setError('Cuenta de médico creada. Un administrador debe verificar tu matrícula antes de que ingreses.');
+        return;
+      }
       router.push(session.role === 'DOCTOR' ? '/panel' : '/medicos');
-    } catch {
-      setError('No pudimos crear la cuenta. Si el backend no está corriendo, podés explorar la app en modo demo.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'No pudimos crear la cuenta.');
     } finally {
       setLoading(false);
     }
