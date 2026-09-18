@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser } from '../../common/decorators/current-user.decorator';
+import { UpdatePatientDto } from './dto/update-patient.dto';
 
 @Injectable()
 export class PatientsService {
@@ -13,11 +14,19 @@ export class PatientsService {
     });
   }
 
-  async updateMe(user: AuthUser, data: { firstName?: string; lastName?: string; documentId?: string; birthDate?: string; healthInsurance?: string; insuranceNumber?: string }) {
+  async updateMe(user: AuthUser, data: UpdatePatientDto) {
     if (!user.patientProfileId) throw new ForbiddenException();
     return this.prisma.patientProfile.update({
       where: { id: user.patientProfileId },
-      data: { ...data, birthDate: data.birthDate ? new Date(data.birthDate) : undefined },
+      // Keep this explicit: never forward request objects or Prisma nested writes.
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        documentId: data.documentId,
+        birthDate: data.birthDate === undefined ? undefined : new Date(data.birthDate),
+        healthInsurance: data.healthInsurance,
+        insuranceNumber: data.insuranceNumber,
+      },
     });
   }
 

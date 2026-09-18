@@ -8,7 +8,8 @@ El proyecto tiene una estructura de monolito modular real, modelos y servicios c
 
 Se revisaron `docs/ROADMAP.md`, README, schema Prisma, todos los módulos backend, cliente HTTP, hooks, autenticación, rutas de interfaz, configuración e infraestructura versionada. El documento `arquitectura-stack-turnos-medicos.md` mencionado en README no se encontró en el proyecto ni en la búsqueda por nombre dentro de su directorio padre. La evaluación arquitectónica usa las decisiones escritas en README, roadmap y comentarios del código; no presupone contenido del documento ausente.
 
-Estados usados: **implementación presente** = lógica conectada identificable, sin certificar ejecución integral; **parcial** = faltan pasos o garantías; **roto** = contradicción concreta entre componentes o comportamiento reproducido; **demo** = simulación; **ausente** = no se encontró implementación en el repositorio. La ausencia de configuración local no demuestra ausencia de una infraestructura externa.
+Estados usados: **implementación presente** = lógica conectada identificable, sin certificar
+ejecución integral; **parcial** = faltan pasos o garantías; **roto** = contradicción concreta entre componentes o comportamiento reproducido; **demo** = simulación; **ausente** = no se encontró implementación en el repositorio. La ausencia de configuración local no demuestra ausencia de una infraestructura externa.
 
 Prioridades: **P0** autorización/integridad crítica antes de exponer datos reales; **P1** bloquea un flujo principal o su confiabilidad; **P2** deuda de mantenimiento u operación. Los escenarios inferidos por lectura se distinguen de las comprobaciones ejecutadas.
 
@@ -221,3 +222,13 @@ Las sondas están en [audit-probes.cjs](audit-probes.cjs), son reproducibles y s
 5. Completar features ausentes y operación; actualizar roadmap solo contra criterios de aceptación y pruebas reproducibles.
 
 No se asigna un porcentaje de completitud: contar archivos, modelos o checks produciría una precisión engañosa mientras existen bloqueos transversales.
+
+## Seguimiento — 18 de septiembre de 2026: corrección A03
+
+Se corrigió la actualización del paciente con `UpdatePatientDto` en el controller y una asignación explícita de seis campos en el servicio: firstName, lastName, documentId, birthDate, healthInsurance e insuranceNumber. Los campos desconocidos, incluidos roles, status, IDs y relaciones, reciben HTTP 400 antes de invocar persistencia. El servicio tampoco propaga esos campos si lo invoca directamente otro componente.
+
+Los campos omitidos se conservan. Se rechaza null y se valida que los campos de texto sean strings; nombre y apellido no admiten cadena vacía. birthDate acepta una fecha calendario válida en formato YYYY-MM-DD. El perfil a actualizar se toma exclusivamente de la identidad autenticada.
+
+Se agregaron 51 tests en `apps/api/test/patients-update.test.cjs`, ejecutables desde la raíz con `npm run test --workspace apps/api`. Usan el runner nativo de Node y ts-node ya instalado, reemplazando el script Jest que no tenía dependencia ni suite. Cubren HTTP con controller/guard JWT/ValidationPipe/servicio reales y persistencia simulada: actualización completa/parcial, campos prohibidos, operaciones anidadas, tipos y fechas inválidas, autenticación y defensa del servicio. Resultado: **51/51 pasan**, y typecheck del backend pasa. El sandbox requirió permiso para el puerto HTTP temporal local.
+
+La sonda de A03 ahora verifica que no se propague la relación user. No se ejecutó una prueba PostgreSQL: la comprobación de HTTP verifica que los payloads rechazados nunca llaman a Prisma. El resto del informe conserva el diagnóstico original; esta corrección no implica resolver los otros hallazgos ni completar la infraestructura integral de tests de D05.

@@ -4,6 +4,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PatientsService } from './patients.service';
+import { UpdatePatientDto } from './dto/update-patient.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('patients')
@@ -16,7 +17,7 @@ export class PatientsController {
   }
 
   @Patch('me')
-  updateMe(@CurrentUser() user: AuthUser, @Body() body: any) {
+  updateMe(@CurrentUser() user: AuthUser, @Body() body: UpdatePatientDto) {
     return this.patients.updateMe(user, body);
   }
 
