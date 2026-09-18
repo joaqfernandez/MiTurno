@@ -16,6 +16,8 @@ export function Navbar() {
   const links = [
     { href: '/medicos', label: 'Buscar médicos', show: session?.role !== 'DOCTOR' },
     { href: '/mis-turnos', label: 'Mis turnos', show: session?.role === 'PATIENT' },
+    { href: '/mi-historia', label: 'Mi historia', show: session?.role === 'PATIENT' },
+    { href: '/admin', label: 'Administración', show: session?.role === 'ADMIN' },
     { href: '/panel', label: 'Panel médico', show: session?.role === 'DOCTOR' },
   ].filter((l) => l.show);
 

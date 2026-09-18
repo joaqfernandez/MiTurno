@@ -34,9 +34,53 @@ class UpdatePatient(BaseModel):
         return value
 
 
-def patient_response(patient: dict) -> dict:
-    # La API Nest serializa Date como ISO UTC. Conservamos ese contrato externo.
-    result = dict(patient)
-    if result["birthDate"] is not None:
-        result["birthDate"] += "T00:00:00.000Z"
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from .dependencies import session, patient_user, doctor_user, current_user
+from .database import EDITABLE_FIELDS
+from .models import Patient, User, Appointment
+from .serializers import row
+from .auth import user_payload
+
+router = APIRouter(prefix="/api", tags=["Pacientes y usuarios"])
+
+
+@router.get("/users/me")
+def me(user=Depends(current_user), db=Depends(session)):
+    return {**user_payload(db, user.user), "patientProfile": row(user.patient) if user.patient else None,
+            "doctorProfile": row(user.doctor, ("icsFeedToken",)) if user.doctor else None}
+
+
+@router.get("/patients/me")
+def my_profile(user=Depends(patient_user)):
+    return row(user.patient)
+
+
+@router.patch("/patients/me")
+def update_me(body: UpdatePatient, user=Depends(patient_user), db=Depends(session)):
+    update_patient(user.patient, body.model_dump(exclude_unset=True))
+    db.flush()
+    return row(user.patient)
+
+
+def update_patient(patient, changes):
+    # Defensa en servicio, además del DTO: nunca propagar relaciones o roles.
+    for field in EDITABLE_FIELDS:
+        if field in changes:
+            value = changes[field]
+            if field == "birthDate":
+                value = datetime.combine(date.fromisoformat(value), datetime.min.time(), timezone.utc)
+            setattr(patient, field, value)
+
+
+@router.get("/patients/of-my-practice")
+def practice(user=Depends(doctor_user), db=Depends(session)):
+    patients = db.scalars(select(Patient).where(Patient.id.in_(select(Appointment.patientId).where(Appointment.doctorId == user.doctor.id, Appointment.status.in_(["CONFIRMED", "COMPLETED", "NO_SHOW"])))).order_by(Patient.lastName).limit(500))
+    result = []
+    for patient in patients:
+        appointments = list(db.scalars(select(Appointment).where(Appointment.patientId == patient.id, Appointment.doctorId == user.doctor.id).order_by(Appointment.startAt.desc())))
+        result.append({**row(patient), "phone": db.get(User, patient.userId).phone, "visitCount": len(appointments),
+                       "lastVisit": appointments[0].startAt if appointments else None,
+                       "appointments": [row(item, ("notes",)) for item in appointments[:5]]})
     return result

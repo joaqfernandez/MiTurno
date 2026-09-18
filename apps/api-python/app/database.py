@@ -1,82 +1,65 @@
-"""Persistencia SQLite exclusiva de la prueba; no accede al PostgreSQL del proyecto."""
-
+"""Transacciones SQLAlchemy; PostgreSQL en despliegue, SQLite en desarrollo rápido."""
 from contextlib import contextmanager
-from datetime import datetime, timezone
 from pathlib import Path
-import sqlite3
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.orm import sessionmaker
+from .models import Base
 
-
-EDITABLE_FIELDS = (
-    "firstName", "lastName", "documentId", "birthDate",
-    "healthInsurance", "insuranceNumber",
-)
-
+EDITABLE_FIELDS = ("firstName", "lastName", "documentId", "birthDate", "healthInsurance", "insuranceNumber")
 
 class Database:
-    def __init__(self, path: Path):
-        self.path = path
+    def __init__(self, url):
+        if isinstance(url, Path):
+            url = f"sqlite:///{url}"
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+        if url.startswith("sqlite:///"):
+            Path(url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
+        self.engine = create_engine(url, pool_pre_ping=True, connect_args={"check_same_thread": False, "timeout": 30} if url.startswith("sqlite") else {})
+        if self.engine.dialect.name == "sqlite":
+            @event.listens_for(self.engine, "connect")
+            def configure(connection, _):
+                connection.execute("PRAGMA foreign_keys=ON")
+                connection.execute("PRAGMA busy_timeout=30000")
+        self.sessions = sessionmaker(self.engine, expire_on_commit=False)
 
     @contextmanager
-    def connect(self):
-        connection = sqlite3.connect(self.path)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
-        try:
-            # Commit si termina bien; rollback si ocurre un error.
-            with connection:
-                yield connection
-        finally:
-            connection.close()
+    def transaction(self):
+        with self.sessions() as session:
+            try:
+                if self.engine.dialect.name == "sqlite":
+                    session.execute(text("BEGIN IMMEDIATE"))
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
 
-    def initialize(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.connect() as connection:
-            connection.executescript("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id TEXT PRIMARY KEY,
-                    roles TEXT NOT NULL,
-                    status TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS patient_profiles (
-                    id TEXT PRIMARY KEY,
-                    userId TEXT NOT NULL UNIQUE REFERENCES users(id),
-                    firstName TEXT NOT NULL,
-                    lastName TEXT NOT NULL,
-                    documentId TEXT UNIQUE,
-                    birthDate TEXT,
-                    healthInsurance TEXT,
-                    insuranceNumber TEXT,
-                    createdAt TEXT NOT NULL,
-                    updatedAt TEXT NOT NULL
-                );
-            """)
+    def create_test_schema(self):
+        # Solo tests. La aplicación normal utiliza Alembic, no create_all al arrancar.
+        Base.metadata.create_all(self.engine)
+        with self.engine.begin() as connection:
+            install_guards(connection)
 
-    def _owned_patient(self, connection, user_id: str, patient_id: str):
-        row = connection.execute(
-            """SELECT p.* FROM patient_profiles p
-               JOIN users u ON u.id = p.userId
-               WHERE p.id = ? AND p.userId = ? AND u.status = 'ACTIVE'""",
-            (patient_id, user_id),
-        ).fetchone()
-        if row is None:
-            raise PermissionError("No tenés acceso a este perfil de paciente")
-        return dict(row)
 
-    def get_patient(self, user_id: str, patient_id: str):
-        with self.connect() as connection:
-            return self._owned_patient(connection, user_id, patient_id)
-
-    def update_patient(self, user_id: str, patient_id: str, changes: dict):
-        # Segunda defensa: solo nombres de columnas constantes, nunca SQL del cliente.
-        allowed = {name: changes[name] for name in EDITABLE_FIELDS if name in changes}
-        with self.connect() as connection:
-            connection.execute("BEGIN IMMEDIATE")
-            self._owned_patient(connection, user_id, patient_id)
-            if allowed:
-                allowed["updatedAt"] = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-                assignments = ", ".join(f'"{name}" = ?' for name in allowed)
-                connection.execute(
-                    f"UPDATE patient_profiles SET {assignments} WHERE id = ? AND userId = ?",
-                    (*allowed.values(), patient_id, user_id),
-                )
-            return self._owned_patient(connection, user_id, patient_id)
+def install_guards(connection):
+    if connection.dialect.name == "postgresql":
+        connection.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS btree_gist")
+        connection.exec_driver_sql("""ALTER TABLE appointments ADD CONSTRAINT appointments_no_overlap
+            EXCLUDE USING gist ("doctorId" WITH =, tstzrange("startAt", "endAt", '[)') WITH &&)
+            WHERE (status IN ('CONFIRMED', 'PENDING_PAYMENT'))""")
+        connection.exec_driver_sql("""CREATE FUNCTION reject_immutable_change() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN RAISE EXCEPTION 'append-only table'; END; $$""")
+        for table in ("medical_record_entries", "audit_logs"):
+            connection.exec_driver_sql(f"CREATE TRIGGER immutable_{table} BEFORE UPDATE OR DELETE ON {table} FOR EACH ROW EXECUTE FUNCTION reject_immutable_change()")
+    else:
+        for operation in ("INSERT", "UPDATE"):
+            connection.exec_driver_sql(f"""CREATE TRIGGER appointments_overlap_{operation.lower()}
+                BEFORE {operation} ON appointments WHEN NEW.status IN ('CONFIRMED', 'PENDING_PAYMENT')
+                BEGIN SELECT RAISE(ABORT, 'appointment overlap') WHERE EXISTS (
+                    SELECT 1 FROM appointments a WHERE a."doctorId" = NEW."doctorId"
+                    AND a.id != NEW.id AND a.status IN ('CONFIRMED', 'PENDING_PAYMENT')
+                    AND a."startAt" < NEW."endAt" AND a."endAt" > NEW."startAt"); END""")
+        for table in ("medical_record_entries", "audit_logs"):
+            for operation in ("UPDATE", "DELETE"):
+                connection.exec_driver_sql(f"CREATE TRIGGER immutable_{table}_{operation.lower()} BEFORE {operation} ON {table} BEGIN SELECT RAISE(ABORT, 'append-only table'); END")

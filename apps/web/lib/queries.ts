@@ -1,12 +1,11 @@
 'use client';
 
 /**
- * Hooks de datos (TanStack Query). Cada hook intenta el backend real y,
- * si no está disponible, cae a los datos de demostración para que toda
- * la UI sea navegable sin API corriendo.
+ * Hooks de datos reales; los fixtures solo se usan en una sesión demo explícita.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, withFallback } from './api';
+import { useAuth } from './auth';
 import * as demo from './demo-data';
 import type {
   Appointment,
@@ -87,8 +86,10 @@ export function useAvailability(doctorId: string) {
 }
 
 export function useMyAppointments() {
+  const { session, ready } = useAuth();
   return useQuery({
-    queryKey: ['my-appointments'],
+    enabled: ready && Boolean(session),
+    queryKey: ['my-appointments', session?.email],
     queryFn: () =>
       withFallback(
         () => api<Appointment[]>('/appointments/me'),
@@ -98,8 +99,10 @@ export function useMyAppointments() {
 }
 
 export function useDoctorAgenda() {
+  const { session, ready } = useAuth();
   return useQuery({
-    queryKey: ['doctor-agenda'],
+    enabled: ready && Boolean(session),
+    queryKey: ['doctor-agenda', session?.email],
     queryFn: () =>
       withFallback(
         () => api<Appointment[]>('/appointments/me'),
@@ -143,8 +146,10 @@ export function useCancelAppointment() {
 }
 
 export function useMyPatients() {
+  const { session, ready } = useAuth();
   return useQuery({
-    queryKey: ['my-patients'],
+    enabled: ready && Boolean(session),
+    queryKey: ['my-patients', session?.email],
     queryFn: () =>
       withFallback(
         () => api<Patient[]>('/patients/of-my-practice'),
@@ -154,8 +159,10 @@ export function useMyPatients() {
 }
 
 export function useMedicalRecord(patientId: string) {
+  const { session, ready } = useAuth();
   return useQuery({
-    queryKey: ['medical-record', patientId],
+    enabled: ready && Boolean(session),
+    queryKey: ['medical-record', patientId, session?.email],
     queryFn: () =>
       withFallback(
         () => api<MedicalRecord>(`/medical-records/${patientId}`),
@@ -185,8 +192,10 @@ export function useAddRecordEntry(patientId: string) {
 }
 
 export function useSchedule() {
+  const { session, ready } = useAuth();
   return useQuery({
-    queryKey: ['schedule'],
+    enabled: ready && Boolean(session),
+    queryKey: ['schedule', session?.email],
     queryFn: () =>
       withFallback(
         () => api<WeeklyBlock[]>('/doctors/me/schedule'),
@@ -208,8 +217,10 @@ export function useSaveSchedule() {
 }
 
 export function useDoctorLocations() {
+  const { session, ready } = useAuth();
   return useQuery({
-    queryKey: ['doctor-locations'],
+    enabled: ready && Boolean(session),
+    queryKey: ['doctor-locations', session?.email],
     queryFn: () =>
       withFallback(
         () => api<DoctorLocation[]>('/doctors/me/locations'),
@@ -237,8 +248,10 @@ export function useSaveDoctorLocations() {
 }
 
 export function useDoctorPhoto() {
+  const { session, ready } = useAuth();
   return useQuery({
-    queryKey: ['doctor-photo'],
+    enabled: ready && Boolean(session),
+    queryKey: ['doctor-photo', session?.email],
     queryFn: () =>
       withFallback(
         () => api<{ photoUrl?: string }>('/doctors/me/photo').then((r) => r.photoUrl),
@@ -267,8 +280,10 @@ export function useSaveDoctorPhoto() {
 }
 
 export function useDoctorSettings() {
+  const { session, ready } = useAuth();
   return useQuery({
-    queryKey: ['doctor-settings'],
+    enabled: ready && Boolean(session),
+    queryKey: ['doctor-settings', session?.email],
     queryFn: () =>
       withFallback(
         () => api<DoctorSettings>('/doctors/me/settings'),

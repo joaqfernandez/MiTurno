@@ -20,7 +20,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   function goAfterLogin(session: Session) {
-    router.push(returnTo ?? (session.role === 'DOCTOR' ? '/panel' : '/mis-turnos'));
+    router.push(returnTo ?? (session.role === 'ADMIN' ? '/admin' : session.role === 'DOCTOR' ? '/panel' : '/mis-turnos'));
   }
 
   async function submit(e: React.FormEvent) {
@@ -29,10 +29,8 @@ function LoginForm() {
     setLoading(true);
     try {
       goAfterLogin(await login(email, password));
-    } catch {
-      setError(
-        'No pudimos iniciar sesión. Verificá tus datos o, si el backend no está corriendo, usá el acceso de demostración.',
-      );
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'No pudimos iniciar sesión.');
     } finally {
       setLoading(false);
     }

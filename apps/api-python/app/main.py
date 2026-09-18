@@ -1,57 +1,85 @@
-"""Aplicación de la prueba: GET/PATCH /api/patients/me."""
-
-import os
+"""Monolito modular FastAPI. Arranque sin modificar el esquema de la base."""
+from collections import OrderedDict, deque
+from contextlib import asynccontextmanager
+import logging
 from pathlib import Path
-import sqlite3
-
-from fastapi import Depends, FastAPI, HTTPException
+from threading import Lock
+import time
+import httpx
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
-from .auth import Identity, authenticate
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+from .config import Settings
 from .database import Database
-from .patients import UpdatePatient, patient_response
+from .payments import MercadoPago
+from .calendar import GoogleCalendar
+from . import auth, patients, doctors, appointments, medical_records, payments, calendar, admin
 
+logger = logging.getLogger("miturno.api")
 
-def create_app(database_path: Path | None = None, secret: str | None = None) -> FastAPI:
-    jwt_secret = secret if secret is not None else os.environ.get("JWT_ACCESS_SECRET", "")
-    if len(jwt_secret.encode()) < 32:
-        raise ValueError("JWT_ACCESS_SECRET debe tener al menos 32 bytes")
+def create_app(database_path: Path | None = None, secret: str | None = None, *, settings: Settings | None = None, payment_provider=None, calendar_provider=None):
+    settings = settings or (Settings(f"sqlite:///{database_path}", secret) if database_path is not None and secret else Settings.load())
+    database = Database(settings.database_url)
+    provider = payment_provider or MercadoPago(settings)
+    google = calendar_provider or GoogleCalendar(settings)
+    @asynccontextmanager
+    async def lifespan(app):
+        yield
+        database.engine.dispose()
+        if hasattr(provider, "client"):
+            provider.client.close()
+        if hasattr(google, "client"):
+            google.client.close()
+    app = FastAPI(title="MiTurno API", version="1.0.0", lifespan=lifespan)
+    app.state.database, app.state.settings = database, settings
+    app.state.payment_provider, app.state.calendar_provider = provider, google
+    app.add_middleware(CORSMiddleware, allow_origins=[settings.web_url], allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"])
 
-    default_path = Path(__file__).resolve().parents[1] / ".data" / "pilot.sqlite3"
-    database = Database(database_path if database_path is not None else default_path)
-    database.initialize()
-    app = FastAPI(title="MiTurno — prueba Python", version="0.1.0")
-    bearer = HTTPBearer(auto_error=False)
-
-    def current_patient(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)):
-        if credentials is None:
-            raise HTTPException(401, "Se requiere Bearer JWT", headers={"WWW-Authenticate": "Bearer"})
-        return authenticate(credentials.credentials, jwt_secret)
+    attempts, mutex = OrderedDict(), Lock()
+    @app.middleware("http")
+    async def rate_limit(request, call_next):
+        # Límite por proceso; desplegar un único worker API o agregar límite en proxy.
+        if request.url.path.startswith(("/api/auth/", "/api/appointments/availability/", "/api/doctors")):
+            key = (request.client.host if request.client else "unknown", request.url.path.split("/")[2])
+            cap = 30 if key[1] == "auth" else 240
+            stamp = time.monotonic()
+            with mutex:
+                bucket = attempts.setdefault(key, deque())
+                attempts.move_to_end(key)
+                while bucket and bucket[0] < stamp - 60:
+                    bucket.popleft()
+                if len(bucket) >= cap:
+                    return JSONResponse(status_code=429, content={"message": "Demasiadas solicitudes; intentá en un minuto"}, headers={"Retry-After": "60"})
+                bucket.append(stamp)
+                if len(attempts) > 10000:
+                    attempts.popitem(last=False)
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_request, error):
-        # Igual que Nest: 400, y sin devolver el body original ni sus datos sensibles.
-        messages = [f'{".".join(map(str, item["loc"]))}: {item["msg"]}' for item in error.errors()]
-        return JSONResponse(status_code=400, content={"statusCode": 400, "message": messages})
+        return JSONResponse(status_code=400, content={"statusCode": 400, "message": [f'{".".join(map(str, item["loc"]))}: {item["msg"]}' for item in error.errors()]})
 
-    @app.exception_handler(PermissionError)
-    async def permission_error(_request, _error):
-        return JSONResponse(status_code=403, content={"detail": "No tenés acceso a este perfil"})
+    @app.exception_handler(IntegrityError)
+    async def integrity_error(_request, _error):
+        return JSONResponse(status_code=409, content={"message": "Los datos entran en conflicto con un registro existente"})
 
-    @app.get("/api/patients/me")
-    def get_me(identity: Identity = Depends(current_patient)):
-        return patient_response(database.get_patient(identity.user_id, identity.patient_id))
+    @app.exception_handler(httpx.HTTPError)
+    async def provider_error(_request, error):
+        logger.warning("provider_error type=%s", type(error).__name__)
+        return JSONResponse(status_code=502, content={"message": "El proveedor externo no respondió correctamente; intentá nuevamente"})
 
-    @app.patch("/api/patients/me")
-    def update_me(body: UpdatePatient, identity: Identity = Depends(current_patient)):
-        # exclude_unset conserva los campos que el cliente no mandó.
-        changes = body.model_dump(exclude_unset=True)
-        try:
-            patient = database.update_patient(identity.user_id, identity.patient_id, changes)
-        except sqlite3.IntegrityError:
-            raise HTTPException(409, "El documento ya está en uso o los datos entran en conflicto") from None
-        return patient_response(patient)
+    @app.get("/api/health")
+    def health():
+        with database.engine.connect() as connection:
+            connection.execute(text("SELECT version_num FROM alembic_version"))
+        return {"status": "ok", "backend": "python"}
 
+    for module in (auth, patients, doctors, appointments, medical_records, payments, calendar, admin):
+        app.include_router(module.router)
     return app

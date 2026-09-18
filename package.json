@@ -1,11 +1,20 @@
 {
   "name": "turnos-medicos",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/web"
+  ],
   "scripts": {
-    "dev:api": "npm run start:dev --workspace apps/api",
+    "dev": "node scripts/dev.mjs",
+    "setup:api": "python3 scripts/backend.py setup",
+    "dev:api": "python3 scripts/backend.py dev",
     "dev:web": "npm run dev --workspace apps/web",
-    "db:migrate": "npm run prisma:migrate --workspace apps/api",
-    "db:studio": "npm run prisma:studio --workspace apps/api"
+    "worker:api": "python3 scripts/backend.py worker",
+    "db:migrate": "python3 scripts/backend.py migrate",
+    "db:seed": "python3 scripts/backend.py seed",
+    "test:api": "python3 scripts/backend.py test",
+    "test:web": "npm run test --workspace apps/web",
+    "build:web": "npm run build --workspace apps/web",
+    "test:e2e": "npm run test:e2e --workspace apps/web"
   }
 }
