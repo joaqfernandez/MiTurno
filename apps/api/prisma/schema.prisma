@@ -35,6 +35,7 @@ model User {
   id           String     @id @default(uuid())
   email        String     @unique
   passwordHash String?    // null si el usuario entra solo por OAuth
+  googleSubject String?   @unique // Identificador estable de Google (sub), nunca el email.
   phone        String?
   roles        UserRole[] @default([PATIENT])
   status       UserStatus @default(PENDING_VERIFICATION)
@@ -64,6 +65,19 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+// Tokens efímeros: estado OAuth y entrega de sesión. Solo se guardan hashes.
+model OAuthRequest {
+  tokenHash   String   @id
+  bindingHash String
+  purpose     String
+  subjectId   String?
+  nonce       String?
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+  @@map("oauth_requests")
 }
 
 // -----------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { google } from 'googleapis';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CryptoService } from '../../common/services/crypto.service';
@@ -20,6 +20,9 @@ export class CalendarSyncService {
   ) {}
 
   getOAuthClient() {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
+      throw new ServiceUnavailableException('Google Calendar no está configurado.');
+    }
     return new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
@@ -27,12 +30,12 @@ export class CalendarSyncService {
     );
   }
 
-  getAuthUrl(doctorId: string): string {
+  getAuthUrl(state: string): string {
     return this.getOAuthClient().generateAuthUrl({
       access_type: 'offline',
       prompt: 'consent',
-      scope: ['https://www.googleapis.com/auth/calendar.events'],
-      state: doctorId,
+      scope: ['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/userinfo.email'],
+      state,
     });
   }
 
@@ -43,6 +46,15 @@ export class CalendarSyncService {
 
     const oauth2 = google.oauth2({ version: 'v2', auth: client });
     const { data: userInfo } = await oauth2.userinfo.get();
+    if (!userInfo.email || !userInfo.verified_email || !tokens.access_token || !tokens.expiry_date) {
+      throw new BadRequestException('Google no devolvió los datos necesarios para conectar el calendario.');
+    }
+    const existing = await this.prisma.calendarAccount.findUnique({ where: {
+      doctorId_provider_externalEmail: { doctorId, provider: 'google', externalEmail: userInfo.email },
+    } });
+    if (!tokens.refresh_token && !existing) {
+      throw new BadRequestException('Volvé a autorizar el acceso a Google Calendar.');
+    }
 
     await this.prisma.calendarAccount.upsert({
       where: {
@@ -57,7 +69,7 @@ export class CalendarSyncService {
         provider: 'google',
         externalEmail: userInfo.email!,
         accessTokenEnc: this.crypto.encrypt(tokens.access_token!),
-        refreshTokenEnc: this.crypto.encrypt(tokens.refresh_token!),
+        refreshTokenEnc: tokens.refresh_token ? this.crypto.encrypt(tokens.refresh_token) : existing!.refreshTokenEnc,
         tokenExpiresAt: new Date(tokens.expiry_date!),
       },
       update: {

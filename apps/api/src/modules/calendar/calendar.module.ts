@@ -3,8 +3,10 @@ import { CalendarController } from './calendar.controller';
 import { CalendarSyncService } from './calendar-sync.service';
 import { IcsService } from './ics.service';
 import { CryptoService } from '../../common/services/crypto.service';
+import { OAuthModule } from '../oauth/oauth.module';
 
 @Module({
+  imports: [OAuthModule],
   controllers: [CalendarController],
   providers: [CalendarSyncService, IcsService, CryptoService],
   exports: [CalendarSyncService],

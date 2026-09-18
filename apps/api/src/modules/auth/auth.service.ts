@@ -67,11 +67,12 @@ export class AuthService {
     return this.issueTokens(stored.userId);
   }
 
-  private async issueTokens(userId: string) {
+  async issueTokens(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
       include: { patientProfile: true, doctorProfile: true },
     });
+    if (user.status === 'SUSPENDED') throw new UnauthorizedException('La cuenta está suspendida.');
 
     const accessToken = this.jwt.sign({
       sub: user.id,
@@ -92,6 +93,10 @@ export class AuthService {
       },
     });
 
-    return { accessToken, refreshToken: rawRefresh };
+    const profile = user.doctorProfile ?? user.patientProfile;
+    return { accessToken, refreshToken: rawRefresh, user: {
+      email: user.email, roles: user.roles,
+      name: profile ? `${profile.firstName} ${profile.lastName}` : user.email,
+    } };
   }
 }

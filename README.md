@@ -95,6 +95,9 @@ Cada médico decide en su perfil: `requiresDeposit`, `depositAmount`, `cancellat
 
 ## API — endpoints principales
 
+Para configurar el ingreso con Google y la conexión segura de Calendar, ver
+[Google OAuth](docs/google-oauth.md).
+
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
 | POST | `/api/auth/register` | — | Registro (rol PATIENT o DOCTOR) |

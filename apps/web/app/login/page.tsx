@@ -7,12 +7,15 @@ import { useAuth } from '@/lib/auth';
 import { Button, Card, Field, Input } from '@/components/ui';
 import { StethoscopeIcon, UserIcon } from '@/components/icons';
 import type { Session } from '@/lib/types';
+import { safeReturnPath, startGoogleLogin } from '@/lib/google-auth';
+import { api } from '@/lib/api';
 
 function LoginForm() {
   const { login, demoLogin } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
-  const returnTo = params.get('volver');
+  const returnTo = safeReturnPath(params.get('volver'));
+  const googleError = params.get('google');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +31,13 @@ function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      goAfterLogin(await login(email, password));
+      const session = await login(email, password);
+      if (googleError === 'account') {
+        const { url } = await api<{ url: string }>('/auth/google/link', { method: 'POST', credentials: 'include' });
+        window.location.assign(url);
+      } else {
+        goAfterLogin(session);
+      }
     } catch {
       setError(
         'No pudimos iniciar sesión. Verificá tus datos o, si el backend no está corriendo, usá el acceso de demostración.',
@@ -49,6 +58,16 @@ function LoginForm() {
       </p>
 
       <Card className="mt-8 p-6">
+        <Button type="button" variant="secondary" className="mb-4 w-full" onClick={() => startGoogleLogin(returnTo)}>
+          Continuar con Google
+        </Button>
+        {googleError && (
+          <p role="alert" className="mb-4 text-sm text-danger-700">
+            {googleError === 'account'
+              ? 'Para vincular Google a tu cuenta, ingresá con email y contraseña. Luego elegí en Google ese mismo email.'
+              : 'No pudimos completar el acceso con Google. Volvé a intentarlo.'}
+          </p>
+        )}
         <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
           <Field label="Email" htmlFor="email" required>
             <Input
@@ -79,7 +98,7 @@ function LoginForm() {
           )}
 
           <Button type="submit" loading={loading} className="mt-1 w-full">
-            Ingresar
+            {googleError === 'account' ? 'Ingresar y vincular Google' : 'Ingresar'}
           </Button>
         </form>
       </Card>

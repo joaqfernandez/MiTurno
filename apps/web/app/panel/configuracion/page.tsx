@@ -5,6 +5,7 @@ import { useDoctorPhoto, useDoctorSettings, useSaveDoctorPhoto, useSaveDoctorSet
 import { Button, Card, Field, Input, PageHeader, Select, Skeleton, cx } from '@/components/ui';
 import { CalendarIcon, CheckCircleIcon, CopyIcon, CreditCardIcon, SmartphoneIcon, UserIcon } from '@/components/icons';
 import type { DoctorSettings } from '@/lib/types';
+import { GoogleCalendarConnect } from '@/components/google-calendar-connect';
 
 const ICS_URL = 'webcal://api.miturno.app/api/calendar/feed/tu-token-privado.ics';
 
@@ -274,12 +275,7 @@ export default function SettingsPage() {
                 Conectá tu cuenta y cada turno confirmado se crea (y se borra) solo en tu calendario. Los tokens se
                 guardan cifrados.
               </p>
-              <a
-                href="/api/calendar/google/connect"
-                className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50"
-              >
-                Conectar Google Calendar
-              </a>
+              <GoogleCalendarConnect />
             </div>
             <div className="border-t border-slate-200 pt-5">
               <h3 className="text-sm font-medium text-slate-900">iPhone / Apple Calendar / Outlook</h3>

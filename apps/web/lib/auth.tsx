@@ -9,6 +9,7 @@ interface AuthContextValue {
   /** false mientras se lee localStorage en el primer render del cliente */
   ready: boolean;
   login: (email: string, password: string) => Promise<Session>;
+  completeGoogleLogin: () => Promise<Session>;
   register: (data: RegisterData) => Promise<Session>;
   demoLogin: (role: UserRole) => Session;
   logout: () => void;
@@ -109,12 +110,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [apply],
   );
 
+  const completeGoogleLogin = useCallback(async () => {
+    const res = await api<{ accessToken: string; user: { email: string; roles: UserRole[]; name: string } }>(
+      '/auth/google/complete', { method: 'POST', credentials: 'include' },
+    );
+    return apply({
+      accessToken: res.accessToken,
+      role: res.user.roles.includes('DOCTOR') ? 'DOCTOR' : 'PATIENT',
+      name: res.user.name,
+      email: res.user.email,
+    });
+  }, [apply]);
+
   const logout = useCallback(() => {
     apply(null);
   }, [apply]);
 
   return (
-    <AuthContext.Provider value={{ session, ready, login, register, demoLogin, logout }}>
+    <AuthContext.Provider value={{ session, ready, login, completeGoogleLogin, register, demoLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );
