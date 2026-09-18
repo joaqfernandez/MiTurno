@@ -5,5 +5,9 @@ dist/
 .env.local
 *.log
 coverage/
+.venv/
+__pycache__/
+.pytest_cache/
+.data/
 .claude/skills/
 .claude/settings.local.json

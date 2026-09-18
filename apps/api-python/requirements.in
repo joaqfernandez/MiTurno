@@ -1,0 +1,7 @@
+# Dependencias directas de la prueba; requirements.txt fija también las transitivas.
+fastapi>=0.115,<1
+pydantic>=2.10,<3
+PyJWT>=2.10,<3
+uvicorn>=0.34,<1
+pytest>=8,<10
+httpx>=0.28,<1

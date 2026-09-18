@@ -36,6 +36,8 @@ turnos-medicos/
 
 ## Puesta en marcha
 
+La prueba independiente de actualización de pacientes en Python tiene su propia [guía de ejecución, lectura del código y tests](apps/api-python/README.md). El frontend y backend principales siguen usando los comandos siguientes.
+
 Requisitos: Node 20+, Docker.
 
 ```bash
