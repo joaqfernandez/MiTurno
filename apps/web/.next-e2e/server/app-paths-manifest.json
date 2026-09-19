@@ -1,0 +1,13 @@
+{
+  "/page": "app/page.js",
+  "/login/page": "app/login/page.js",
+  "/mis-turnos/page": "app/mis-turnos/page.js",
+  "/medicos/page": "app/medicos/page.js",
+  "/medicos/[id]/page": "app/medicos/[id]/page.js",
+  "/mi-historia/page": "app/mi-historia/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/panel/page": "app/panel/page.js",
+  "/panel/configuracion/page": "app/panel/configuracion/page.js",
+  "/panel/horarios/page": "app/panel/horarios/page.js",
+  "/panel/pacientes/page": "app/panel/pacientes/page.js"
+}

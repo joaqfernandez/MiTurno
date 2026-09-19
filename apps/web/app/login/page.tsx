@@ -23,7 +23,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   function goAfterLogin(session: Session) {
-    router.push(returnTo ?? (session.role === 'DOCTOR' ? '/panel' : '/mis-turnos'));
+    router.push(returnTo ?? (session.role === 'ADMIN' ? '/admin' : session.role === 'DOCTOR' ? '/panel' : '/mis-turnos'));
   }
 
   async function submit(e: React.FormEvent) {

@@ -8,12 +8,14 @@ import { formatDateTime, initials } from '@/lib/format';
 import { AppointmentStatusBadge } from '@/components/appointment-status';
 import { Avatar, Badge, Button, Card, ConfirmDialog, EmptyState, PageHeader, Skeleton, cx } from '@/components/ui';
 import { CalendarIcon, LockIcon } from '@/components/icons';
+import { downloadCalendar, isDemoMode } from '@/lib/api';
 import type { Appointment } from '@/lib/types';
 
 const CANCELLABLE: Appointment['status'][] = ['CONFIRMED', 'PENDING_PAYMENT'];
 
 function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: (a: Appointment) => void }) {
   const doctor = appt.doctor;
+  const [calendarError, setCalendarError] = useState('');
   return (
     <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
       <div className="flex flex-1 items-start gap-4">
@@ -33,7 +35,7 @@ function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: (a:
         </div>
       </div>
       <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-        {appt.status === 'PENDING_PAYMENT' && (
+        {appt.status === 'PENDING_PAYMENT' && appt.checkoutUrl && (
           <a
             href={appt.checkoutUrl ?? '#'}
             className="inline-flex min-h-9 items-center justify-center rounded-lg bg-success-600 px-4 text-sm font-medium text-white transition-colors hover:bg-success-700"
@@ -41,6 +43,8 @@ function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: (a:
             Pagar seña
           </a>
         )}
+        {!isDemoMode() && <Button variant="secondary" size="sm" onClick={() => downloadCalendar(appt.id).catch(error => setCalendarError(error.message))}>Agregar a mi calendario</Button>}
+        {calendarError && <p role="alert" className="text-sm text-red-700">{calendarError}</p>}
         {onCancel && CANCELLABLE.includes(appt.status) && (
           <Button variant="danger" size="sm" onClick={() => onCancel(appt)}>
             Cancelar turno

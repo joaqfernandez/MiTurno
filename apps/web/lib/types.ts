@@ -1,9 +1,11 @@
-// Tipos espejo de las respuestas del backend NestJS (ver apps/api/prisma/schema.prisma)
+// Contratos JSON del backend Python (apps/api-python/app).
 
-export type UserRole = 'PATIENT' | 'DOCTOR';
+export type UserRole = 'PATIENT' | 'DOCTOR' | 'ADMIN';
 
 export interface Session {
   accessToken: string;
+  refreshToken?: string;
+  patientProfileId?: string;
   role: UserRole;
   name: string;
   email: string;
