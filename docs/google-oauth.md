@@ -1,103 +1,66 @@
-# Google: acceso a MiTurno y conexión de Calendar
+# Google: login y Calendar en Python
 
-Son dos autorizaciones independientes. El acceso pide `openid email profile` y
-crea un paciente si no existe. Calendar se conecta desde la configuración del
-médico y pide permisos de eventos y email. Iniciar sesión no conecta Calendar.
+El backend activo es FastAPI. Login (`openid email profile`) y Calendar son consentimientos separados. Iniciar sesión no concede acceso al calendario.
 
-## Configuración
+## Configurar y arrancar
 
-1. En Google Cloud, configurar la pantalla de consentimiento y un cliente OAuth
-   de tipo **Aplicación web**. Habilitar Google Calendar API. Si la aplicación está
-   en modo de pruebas, agregar las cuentas que van a probarla como usuarios de prueba.
-2. Configurar en el entorno de la API:
+En `apps/api-python/.env` configurar:
 
-   ```dotenv
-   GOOGLE_CLIENT_ID=...
-   GOOGLE_CLIENT_SECRET=...
-   GOOGLE_LOGIN_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
-   GOOGLE_REDIRECT_URI=http://localhost:3000/api/calendar/google/callback
-   WEB_URL=http://localhost:3001
-   ```
-
-   Registrar ambas URI exactas como redirecciones autorizadas en Google.
-   Mantener el secreto solamente en el backend. Calendar también requiere
-   `ENCRYPTION_KEY` para cifrar sus tokens.
-
-3. Cookies y dominios: usar HTTPS en producción y `NODE_ENV=production`.
-   La API y la web deben estar en el mismo sitio (por ejemplo `api.miturno.com`
-   y `app.miturno.com`), o usar el proxy `/api` de Next con todas las URI OAuth
-   apuntando al dominio de la web. Con API en otro origen, configurar
-   `NEXT_PUBLIC_API_URL` con su origen; los requests de Calendar y entrega de
-   sesión incluyen credenciales. No mezclar callback en un host con requests
-   posteriores al proxy en otro host: las cookies son propias de cada host.
-   En localhost los puertos 3000 y 3001 comparten host; no mezclar `localhost`
-   con `127.0.0.1`. Si web y API están en sitios distintos, usar el proxy y
-   dejar `NEXT_PUBLIC_API_URL` sin definir y configurar `API_URL` en el entorno
-   de Next con el destino del backend; las cookies `SameSite=Lax` no sirven para
-   fetch entre sitios. En ese caso ambas URI de callback deben usar el origen
-   público de la web, seguido de `/api/auth/google/callback` o
-   `/api/calendar/google/callback` respectivamente.
-
-## Base de datos
-
-Este repositorio todavía no versiona un historial de migraciones Prisma. Para
-una base nueva, seguir la inicialización del README con el esquema actualizado.
-Para una base existente sin historial de migraciones, aplicar una sola vez:
-
-```sh
-cd apps/api
-npx prisma db execute --schema prisma/schema.prisma --file prisma/updates/20260918_google_oauth.sql
-npx prisma generate
+```dotenv
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_LOGIN_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/calendar/google/callback
+API_URL=http://localhost:3000
+WEB_URL=http://localhost:3001
+APP_ENV=development
 ```
 
-Si tu entorno ya tiene migraciones Prisma, generar e incorporar la migración
-`google_oauth` en ese historial usando el esquema actualizado, en lugar de
-ejecutar el SQL manualmente. No aplicar ambos caminos sobre la misma base.
+Registrar ambas URI exactas en un cliente OAuth de tipo Aplicación web en Google Cloud. Configurar pantalla de consentimiento y usuarios de prueba; habilitar Calendar API. Calendar también necesita `ENCRYPTION_KEY` (generada por `npm run setup:api`). No compartir secretos ni incluirlos en el frontend.
 
-## Comportamiento y protección
+Si se omiten las URI, se derivan de API_URL. En producción usar `APP_ENV=production` y HTTPS, incluidas las URI explícitas. No mezclar localhost con 127.0.0.1. Web y API deben compartir sitio; para dominios de sitios distintos usar el proxy Next `/api`, los callbacks bajo el origen web y API_URL del servidor Next apuntando al backend. Las cookies HttpOnly/SameSite=Lax son propias del host.
 
-- Cada autorización tiene un `state` aleatorio de 256 bits, un hash en DB y
-  una cookie de vinculación `HttpOnly`, `SameSite=Lax`, `Secure` en producción.
-  Vence a los 10 minutos. Se verifica antes de canjear el código de Google.
-- El estado está separado por propósito y se consume mediante un borrado
-  condicional: solo un callback puede usarlo, incluso con varias instancias.
-  El médico se recupera del registro guardado, nunca de un ID recibido en `state`.
-- El login verifica el ID token con la biblioteca de Google (firma, audiencia,
-  emisor y vencimiento), exige email verificado y comprueba `nonce`.
-- La identidad estable es `sub`. Un usuario nuevo recibe exclusivamente el rol
-  paciente. Un usuario existente conserva sus perfiles y roles.
-- Un email existente no se vincula solo por coincidir: el usuario ingresa su
-  contraseña una vez y vuelve a Google para confirmar el mismo email. El endpoint
-  `POST /api/auth/google/link` requiere JWT y vincula el estado al usuario autenticado.
-  Se conservan sus roles y perfiles. Los siguientes ingresos usan Google directamente.
-  Esto evita asociar una identidad a una cuenta local sin comprobar acceso a ambas.
-  Las cuentas suspendidas no reciben tokens.
-- El callback de login entrega un ticket por cookie `HttpOnly`, válido 60 segundos
-  y de un solo uso. La web lo canjea con un POST cuyo `Origin` debe ser `WEB_URL`.
-  Los JWT y refresh tokens no se incluyen en URLs. La sesión de la web mantiene
-  el mecanismo existente de almacenamiento local.
-- Las solicitudes vencidas se eliminan al crear nuevas solicitudes. Iniciar
-  nuevamente un mismo flujo en otro tab reemplaza su cookie: se completa el
-  intento más reciente; el anterior debe reiniciarse.
-
-## Verificación
-
-```sh
-npm run test:oauth --workspace apps/api
+```bash
+npm run db:migrate
+npm run dev
 ```
 
-Las pruebas automatizadas usan dobles de Google y de la base de datos. Cubren
-estado ausente, alterado, vencido, repetido, de otro navegador o propósito,
-consumo concurrente, nonce inválido, claims inválidos, creación de pacientes,
-roles existentes, cuentas suspendidas y entrega de sesión con validación de origen.
+Alembic `0002` añade identidad Google y solicitudes temporales, conservando usuarios, turnos e historias existentes. No usar Prisma ni ejecutar el antiguo SQL NestJS. Si ya tenés una base de desarrollo, no hace falta volver a cargar el seed.
 
-Con credenciales reales, verificar además:
+## Comportamiento
 
-1. Login de un paciente nuevo, cierre de sesión y segundo login sin duplicar usuario.
-2. Login de un médico ya registrado: verificar contraseña para vincular, elegir
-   el mismo email de Google y conservar su panel; el segundo ingreso usa solo Google.
-3. Conexión de Calendar desde una sesión real de médico y sincronización de un turno.
-4. Cancelar el consentimiento: mostrar error y permitir reiniciar.
-5. Repetir un callback o abrirlo en otro navegador: no crear sesión ni vincular Calendar.
+- Un usuario nuevo de Google recibe solamente PATIENT y un perfil de paciente.
+- Si ya existe su email, se pide contraseña y un nuevo consentimiento para vincular ambas cuentas. No se vinculan automáticamente por email.
+- La identidad estable es `sub`. Los roles y perfiles existentes se conservan. Usuarios pendientes o suspendidos no reciben sesión.
+- PyJWT verifica firma RS256 con claves públicas Google, audiencia, emisor, expiración e identidad. Se exige email verificado y nonce correspondiente al intento.
+- El estado aleatorio está ligado a una cookie HttpOnly independiente, vence a los 10 minutos y se consume una vez mediante DELETE condicional. Incluso un fallo del proveedor invalida el intento consumido.
+- El callback entrega un ticket HttpOnly de 60 segundos. La web lo canjea por POST con Origin validado; no se ponen JWT ni refresh tokens en las URLs. El ticket tiene un solo ganador bajo concurrencia PostgreSQL.
+- Contraseña y Google comparten el mapeo de sesión: access token, refresh token, perfil del paciente y rol ADMIN/DOCTOR/PATIENT.
+- Cancelar un consentimiento válido de Calendar vuelve a configuración con un mensaje de error y consume el intento.
 
-Referencia: [OpenID Connect de Google](https://developers.google.com/identity/openid-connect/openid-connect).
+## Pruebas
+
+```bash
+npm run test:api
+npm run test:web
+npm run test:e2e
+npm run build:web
+```
+
+Las pruebas Python verifican JWT firmados con una clave RSA de prueba; solo el transporte Google y la fuente de claves se sustituyen. Cubren firmas/claims inválidos, estado ausente/alterado/vencido/de otro navegador/propósito, replay, creación, vinculación, suspensión, ticket, Origin, errores del proveedor y migración sin pérdida de datos.
+
+Los recorridos de navegador usan la aplicación, cookies, sesiones y base real temporal; únicamente Google se simula en `scripts/e2e_backend.py`. Este adaptador no está disponible en el arranque normal ni en producción. Las pruebas PostgreSQL de `tests/test_postgres.py` incluyen competencia por estados y tickets. Ver README para configurar TEST_POSTGRES_URL.
+
+## Prueba manual pendiente con Google real
+
+Con credenciales y usuarios de prueba configurados:
+
+1. Ingresar con una cuenta nueva, salir y repetir sin duplicar usuario.
+2. Vincular una cuenta existente usando contraseña; comprobar mismo perfil, historia y rol.
+3. Probar paciente, médico y administrador, incluida renovación al vencer el access token.
+4. Cancelar consentimiento y volver a intentar; repetir un callback debe fallar.
+5. Conectar Calendar desde el panel médico, reservar/cancelar un turno y comprobar el evento en Google.
+
+La aprobación automatizada no sustituye esta validación de credenciales, pantalla de consentimiento y callbacks públicos.
+
+Referencias: [OpenID Connect de Google](https://developers.google.com/identity/openid-connect/openid-connect), [verificación de JWT con PyJWT](https://pyjwt.readthedocs.io/en/stable/usage.html).

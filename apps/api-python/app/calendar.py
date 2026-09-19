@@ -44,7 +44,7 @@ class GoogleCalendar:
             raise HTTPException(503, "Google Calendar todavía no está configurado")
         self.cipher()
         return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode({
-            "client_id": self.settings.google_client_id, "redirect_uri": f"{self.settings.api_url}/api/calendar/google/callback",
+            "client_id": self.settings.google_client_id, "redirect_uri": (self.settings.google_redirect_uri or f"{self.settings.api_url}/api/calendar/google/callback"),
             "response_type": "code", "access_type": "offline", "prompt": "consent", "state": state,
             "scope": "openid email https://www.googleapis.com/auth/calendar.events",
         })
@@ -56,7 +56,7 @@ class GoogleCalendar:
         return response.json()
 
     def exchange(self, code):
-        tokens = self.token({"grant_type": "authorization_code", "code": code, "redirect_uri": f"{self.settings.api_url}/api/calendar/google/callback"})
+        tokens = self.token({"grant_type": "authorization_code", "code": code, "redirect_uri": (self.settings.google_redirect_uri or f"{self.settings.api_url}/api/calendar/google/callback")})
         response = self.client.get("https://openidconnect.googleapis.com/v1/userinfo", headers={"Authorization": f"Bearer {tokens['access_token']}"})
         response.raise_for_status()
         profile = response.json()
@@ -105,7 +105,7 @@ def connect(request: Request, response: Response, user=Depends(doctor_user), db=
 
 
 @router.get("/google/callback")
-def callback(request: Request, code: str = Query(max_length=2048), state: str = Query(max_length=256), db=Depends(session)):
+def callback(request: Request, code: str | None = Query(default=None, max_length=2048), state: str = Query(max_length=256), error: str | None = None, db=Depends(session)):
     if not secrets.compare_digest(request.cookies.get("calendar_state", ""), state):
         raise HTTPException(400, "La conexión no pertenece a esta sesión")
     pending = db.scalar(select(OAuthState).where(OAuthState.tokenHash == digest(state)))
@@ -117,7 +117,16 @@ def callback(request: Request, code: str = Query(max_length=2048), state: str = 
     if result.rowcount != 1:
         raise HTTPException(400, "Conexión utilizada")
     provider = request.app.state.calendar_provider
-    tokens, email = provider.exchange(code)
+    def denied():
+        response = RedirectResponse(f"{request.app.state.settings.web_url}/panel/configuracion?calendar=error", status_code=303)
+        response.delete_cookie("calendar_state", path="/api/calendar/google/callback")
+        return response
+    if error or not code:
+        return denied()
+    try:
+        tokens, email = provider.exchange(code)
+    except (httpx.HTTPError, ValueError, KeyError, HTTPException):
+        return denied()
     account = db.scalar(select(CalendarAccount).where(CalendarAccount.doctorId == pending.doctorId, CalendarAccount.externalEmail == email, CalendarAccount.provider == "google"))
     if not account:
         if not tokens.get("refresh_token"):

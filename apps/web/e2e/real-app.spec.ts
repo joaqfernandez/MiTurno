@@ -50,3 +50,24 @@ test('admin sees verification queue and access is separated from patient session
   await expect(page.getByText('Ingresá con una cuenta administradora.')).toBeVisible();
   await expect(page.getByText('Matrícula: DEMO-VALERIA')).toHaveCount(0);
 });
+
+for (const [account, destination] of [['ana', '/mis-turnos'], ['valeria', '/panel'], ['admin', '/admin']]) {
+  test(`Google callback preserves ${account} session through real Python routes`, async ({ page }) => {
+    await page.goto('/login');
+    await page.getByRole('button', { name: 'Continuar con Google' }).click();
+    await page.getByLabel('Cuenta de prueba').selectOption(account);
+    await page.getByRole('button', { name: 'Autorizar prueba' }).click();
+    await expect(page).toHaveURL(`http://127.0.0.1:3101${destination}`);
+    expect(await page.evaluate(() => localStorage.getItem('refreshToken'))).toBeTruthy();
+    await page.reload();
+    if (account === 'ana') {
+      await page.goto('/mi-historia');
+      await expect(page.getByRole('heading', { name: 'Ejemplo ficticio' })).toBeVisible();
+    } else if (account === 'admin') {
+      await expect(page.getByRole('heading', { name: 'Administración' })).toBeVisible();
+    } else {
+      await page.goto('/panel/pacientes');
+      await expect(page.getByText('Ana Castro', { exact: true })).toBeVisible();
+    }
+  });
+}

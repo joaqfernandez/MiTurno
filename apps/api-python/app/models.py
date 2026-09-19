@@ -31,6 +31,7 @@ class User(Entity, Base):
     __tablename__ = "users"
     email: Mapped[str] = mapped_column(String(320), unique=True)
     passwordHash: Mapped[str | None] = mapped_column(Text)
+    googleSubject: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
     phone: Mapped[str | None] = mapped_column(String(64))
     roles: Mapped[list] = mapped_column(JSON, default=lambda: ["PATIENT"])
     status: Mapped[str] = mapped_column(String(32), default="ACTIVE")
@@ -230,3 +231,13 @@ class AuditLog(Entity, Base):
     entityId: Mapped[str | None] = mapped_column(String(64))
     details: Mapped[dict | None] = mapped_column("metadata", JSON)
     ip: Mapped[str | None] = mapped_column(String(64))
+
+
+class OAuthRequest(Entity, Base):
+    __tablename__ = "oauth_requests"
+    tokenHash: Mapped[str] = mapped_column(String(64), unique=True)
+    bindingHash: Mapped[str] = mapped_column(String(64))
+    purpose: Mapped[str] = mapped_column(String(16))
+    userId: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    nonce: Mapped[str] = mapped_column(String(128))
+    expiresAt: Mapped[datetime] = mapped_column(UTCDateTime, index=True)

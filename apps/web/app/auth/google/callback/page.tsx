@@ -22,7 +22,7 @@ export default function GoogleCallbackPage() {
       if (!active) return;
       const returnTo = safeReturnPath(sessionStorage.getItem(GOOGLE_RETURN_KEY));
       sessionStorage.removeItem(GOOGLE_RETURN_KEY);
-      router.replace(returnTo ?? (session.role === 'DOCTOR' ? '/panel' : '/mis-turnos'));
+      router.replace(returnTo ?? (session.role === 'ADMIN' ? '/admin' : session.role === 'DOCTOR' ? '/panel' : '/mis-turnos'));
     }).catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
   }, [ready, completeGoogleLogin, router]);

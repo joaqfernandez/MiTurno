@@ -38,10 +38,8 @@ function LoginForm() {
       } else {
         goAfterLogin(session);
       }
-    } catch {
-      setError(
-        'No pudimos iniciar sesión. Verificá tus datos o, si el backend no está corriendo, usá el acceso de demostración.',
-      );
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'No pudimos iniciar sesión.');
     } finally {
       setLoading(false);
     }

@@ -5,6 +5,7 @@ import time
 from urllib.parse import parse_qs, urlparse
 from datetime import timedelta
 import httpx
+import pytest
 from sqlalchemy import select, func
 from app.calendar import GoogleCalendar
 from app.models import CalendarAccount, CalendarEvent, Doctor, Payment, Appointment, Notification, Job, now
@@ -144,3 +145,18 @@ def test_mp_adapter_keeps_preference_and_payment_identifiers_separate(system):
     assert provider.checkout("internal-id", 100, "ARS", "user@example.com")["id"] == "preference-123"
     provider.refund("987", "internal-id")
     assert seen[-1].headers["X-Idempotency-Key"] == "internal-id"
+
+
+def test_calendar_denied_consent_consumes_state_and_redirects(system):
+    settings = system.settings
+    settings.google_client_id, settings.google_client_secret = "test-client", "test-secret"
+    provider = GoogleCalendar(settings, httpx.MockTransport(lambda request: pytest.fail('denied consent must not exchange code')))
+    system.client.app.state.calendar_provider = provider
+    response = system.client.get('/api/calendar/google/connect', headers=system.headers('doctor'))
+    state = parse_qs(urlparse(response.json()['url']).query)['state'][0]
+    binding = system.client.cookies.get('calendar_state')
+    response = system.client.get('/api/calendar/google/callback', params={'state': state, 'error': 'access_denied'}, follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers['location'].endswith('/panel/configuracion?calendar=error')
+    system.client.cookies.set('calendar_state', binding, path='/api/calendar/google/callback')
+    assert system.client.get('/api/calendar/google/callback', params={'state': state, 'code': 'replay'}, follow_redirects=False).status_code == 400

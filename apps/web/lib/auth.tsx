@@ -5,11 +5,7 @@ import { api, setDemoMode } from './api';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Session, UserRole } from './types';
 
-interface AuthResponse {
-  accessToken: string | null;
-  refreshToken: string | null;
-  user: { email: string; roles: UserRole[]; name?: string; patientProfileId?: string | null };
-}
+import { sessionFromAuth, type AuthResponse } from './auth-session';
 
 interface AuthContextValue {
   session: Session | null;
@@ -102,14 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         '/auth/login',
         { method: 'POST', body: JSON.stringify({ email, password }) },
       );
-      return apply({
-        accessToken: res.accessToken!,
-        refreshToken: res.refreshToken ?? undefined,
-        patientProfileId: res.user.patientProfileId ?? undefined,
-        role: res.user.roles.includes('ADMIN') ? 'ADMIN' : res.user.roles.includes('DOCTOR') ? 'DOCTOR' : 'PATIENT',
-        name: res.user.name ?? email,
-        email,
-      });
+      return apply(sessionFromAuth(res));
     },
     [apply],
   );
@@ -134,15 +123,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const completeGoogleLogin = useCallback(async () => {
-    const res = await api<{ accessToken: string; user: { email: string; roles: UserRole[]; name: string } }>(
+    setDemoMode(false);
+    const res = await api<AuthResponse>(
       '/auth/google/complete', { method: 'POST', credentials: 'include' },
     );
-    return apply({
-      accessToken: res.accessToken,
-      role: res.user.roles.includes('DOCTOR') ? 'DOCTOR' : 'PATIENT',
-      name: res.user.name,
-      email: res.user.email,
-    });
+    return apply(sessionFromAuth(res));
   }, [apply]);
 
   const logout = useCallback(() => {

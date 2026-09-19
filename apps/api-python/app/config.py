@@ -19,6 +19,8 @@ class Settings:
     mp_webhook_secret: str = ""
     google_client_id: str = ""
     google_client_secret: str = ""
+    google_login_redirect_uri: str = ""
+    google_redirect_uri: str = ""
     resend_api_key: str = ""
     email_from: str = ""
     twilio_sid: str = ""
@@ -33,6 +35,9 @@ class Settings:
                 raise ValueError("Producción requiere PostgreSQL")
             if not self.web_url.startswith("https://") or not self.api_url.startswith("https://"):
                 raise ValueError("Producción requiere URLs HTTPS")
+            for uri in (self.google_login_redirect_uri, self.google_redirect_uri):
+                if uri and not uri.startswith("https://"):
+                    raise ValueError("Producción requiere callbacks Google HTTPS")
 
     @classmethod
     def load(cls):
@@ -44,6 +49,7 @@ class Settings:
             environment=os.getenv("APP_ENV", "development"), encryption_key=os.getenv("ENCRYPTION_KEY", ""),
             mp_access_token=os.getenv("MP_ACCESS_TOKEN", ""), mp_webhook_secret=os.getenv("MP_WEBHOOK_SECRET", ""),
             google_client_id=os.getenv("GOOGLE_CLIENT_ID", ""), google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET", ""),
+            google_login_redirect_uri=os.getenv("GOOGLE_LOGIN_REDIRECT_URI", ""), google_redirect_uri=os.getenv("GOOGLE_REDIRECT_URI", ""),
             resend_api_key=os.getenv("RESEND_API_KEY", ""), email_from=os.getenv("EMAIL_FROM", ""),
             twilio_sid=os.getenv("TWILIO_ACCOUNT_SID", ""), twilio_token=os.getenv("TWILIO_AUTH_TOKEN", ""),
             twilio_from=os.getenv("TWILIO_FROM_NUMBER", ""),

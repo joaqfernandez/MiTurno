@@ -1,3 +1,5 @@
+> Actualización OAuth: login y vinculación Google ya están portados a Python. Ver [google-oauth.md](google-oauth.md) y [verificación de integración](VERIFICACION_PRE_MERGE_OAUTH.md) para configuración y evidencia posterior.
+
 # Migración del backend a Python
 
 El backend activo es FastAPI + SQLAlchemy + Alembic; el frontend sigue siendo TypeScript/Next.js. Se retiró NestJS/Prisma del workspace. La base PostgreSQL de desarrollo es nueva, aislada y contiene únicamente datos ficticios. No se migraron datos del esquema anterior por decisión del usuario.

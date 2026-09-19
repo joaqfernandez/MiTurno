@@ -106,3 +106,35 @@ def test_postgres_concurrent_webhook_is_idempotent(pg):
         list(executor.map(approve, range(2)))
     with pg.db.transaction() as db:
         assert db.scalar(select(func.count()).select_from(Job)) == 3
+
+
+def test_postgres_oauth_ticket_has_only_one_winner(pg):
+    from fastapi import Response
+    from app.google_auth import create_request
+    with pg.db.transaction() as db:
+        user_id = db.scalar(select(User.id).where(User.email == 'ana@example.com'))
+        ticket, _ = create_request(db, 'session', Response(), pg.settings, user_id)
+    def complete(_):
+        return pg.client.post('/api/auth/google/complete', headers={
+            'Origin': pg.settings.web_url, 'Cookie': f'miturno_oauth_session={ticket}'})
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        responses = list(executor.map(complete, range(2)))
+    assert sorted(response.status_code for response in responses) == [200, 401]
+
+
+def test_postgres_oauth_callback_state_has_only_one_winner(pg):
+    from fastapi import Response
+    from app.google_auth import create_request, consume_request
+    with pg.db.transaction() as db:
+        response = Response()
+        state, _ = create_request(db, 'login', response, pg.settings)
+        binding = response.headers['set-cookie'].split(';')[0].split('=', 1)[1]
+    def consume(_):
+        with pg.db.transaction() as db:
+            try:
+                consume_request(db, 'login', state, binding)
+                return True
+            except ValueError:
+                return False
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        assert sorted(executor.map(consume, range(2))) == [False, True]

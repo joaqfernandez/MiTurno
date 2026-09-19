@@ -37,4 +37,4 @@ Las marcas indican implementación local verificada; las integraciones externas 
 - [ ] Consentimiento, términos y requisitos de tratamiento de datos de salud.
 - [ ] Completar controles UI de excepciones de agenda y zonas horarias.
 
-No están implementados login social ni gestión integral de clínicas. Las sedes de atención sí tienen modelo/API, pero eso no equivale a administrar una clínica multiusuario.
+Login Google está implementado y requiere validación con credenciales reales. No está implementada la gestión integral de clínicas. Las sedes de atención sí tienen modelo/API, pero eso no equivale a administrar una clínica multiusuario.

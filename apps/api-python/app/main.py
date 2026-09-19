@@ -16,15 +16,16 @@ from .config import Settings
 from .database import Database
 from .payments import MercadoPago
 from .calendar import GoogleCalendar
-from . import auth, patients, doctors, appointments, medical_records, payments, calendar, admin
+from . import auth, patients, doctors, appointments, medical_records, payments, calendar, admin, google_auth
 
 logger = logging.getLogger("miturno.api")
 
-def create_app(database_path: Path | None = None, secret: str | None = None, *, settings: Settings | None = None, payment_provider=None, calendar_provider=None):
+def create_app(database_path: Path | None = None, secret: str | None = None, *, settings: Settings | None = None, payment_provider=None, calendar_provider=None, login_provider=None):
     settings = settings or (Settings(f"sqlite:///{database_path}", secret) if database_path is not None and secret else Settings.load())
     database = Database(settings.database_url)
     provider = payment_provider or MercadoPago(settings)
     google = calendar_provider or GoogleCalendar(settings)
+    login_google = login_provider or google_auth.GoogleLogin(settings)
     @asynccontextmanager
     async def lifespan(app):
         yield
@@ -33,8 +34,11 @@ def create_app(database_path: Path | None = None, secret: str | None = None, *, 
             provider.client.close()
         if hasattr(google, "client"):
             google.client.close()
+        if hasattr(login_google, "client"):
+            login_google.client.close()
     app = FastAPI(title="MiTurno API", version="1.0.0", lifespan=lifespan)
     app.state.database, app.state.settings = database, settings
+    app.state.login_provider = login_google
     app.state.payment_provider, app.state.calendar_provider = provider, google
     app.add_middleware(CORSMiddleware, allow_origins=[settings.web_url], allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"])
 
@@ -80,6 +84,6 @@ def create_app(database_path: Path | None = None, secret: str | None = None, *, 
             connection.execute(text("SELECT version_num FROM alembic_version"))
         return {"status": "ok", "backend": "python"}
 
-    for module in (auth, patients, doctors, appointments, medical_records, payments, calendar, admin):
+    for module in (auth, patients, doctors, appointments, medical_records, payments, calendar, admin, google_auth):
         app.include_router(module.router)
     return app
