@@ -17,7 +17,6 @@ interface AuthContextValue {
   ready: boolean;
   login: (email: string, password: string) => Promise<Session>;
   completeGoogleLogin: () => Promise<Session>;
-  register: (data: RegisterData) => Promise<Session>;
   register: (data: RegisterData) => Promise<Session | null>;
   demoLogin: (role: UserRole) => Session;
   logout: () => void;
@@ -148,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     const refreshToken = localStorage.getItem('refreshToken');
-    if (refreshToken) void api('/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken }) }).catch(() => {});
+    if (refreshToken) void api('/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken }) }).catch(() => { });
     apply(null);
   }, [apply]);
 
