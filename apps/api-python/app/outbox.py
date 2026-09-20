@@ -1,6 +1,7 @@
 """Efectos durables escritos en la misma transacción que el cambio de dominio."""
 from sqlalchemy import select
-from .models import Job, Notification, Patient, Doctor
+from sqlalchemy.orm import Session
+from .models import Appointment, Job, Notification, Patient, Doctor
 
 
 def enqueue(db, kind, entity_id, key):
@@ -19,8 +20,12 @@ def notify(db, user_id, template, appointment_id):
     enqueue(db, "notification", item.id, f"notification:{item.id}")
 
 
-def appointment_effects(db, appointment, cancelled=False):
+def appointment_effects(db: Session, appointment: Appointment, cancelled: bool = False) -> None:
+    patient = db.get(Patient, appointment.patientId)
+    doctor = db.get(Doctor, appointment.doctorId)
+    if patient is None or doctor is None:
+        raise ValueError("El turno debe tener un paciente y un médico existentes")
     template = "appointment_cancelled" if cancelled else "appointment_confirmed"
-    notify(db, db.get(Patient, appointment.patientId).userId, template, appointment.id)
-    notify(db, db.get(Doctor, appointment.doctorId).userId, template, appointment.id)
+    notify(db, patient.userId, template, appointment.id)
+    notify(db, doctor.userId, template, appointment.id)
     enqueue(db, "calendar", appointment.id, f"calendar:{appointment.id}:{appointment.status}")
