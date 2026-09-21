@@ -5,11 +5,31 @@ import { Navbar } from '@/components/navbar';
 import { DemoBanner } from '@/components/demo-banner';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3001'),
   title: {
-    default: 'MiTurno — Turnos médicos online',
-    template: '%s · MiTurno',
+    default: 'MiTurno | Turnos médicos online',
+    template: '%s | MiTurno',
   },
   description: 'Buscá especialistas y reservá tu turno médico online, sin llamadas ni esperas.',
+  applicationName: 'MiTurno',
+  keywords: ['turnos médicos', 'reservar turno médico', 'médicos online', 'especialistas', 'Argentina'],
+  authors: [{ name: 'MiTurno' }],
+  creator: 'MiTurno',
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    locale: 'es_AR',
+    url: '/',
+    siteName: 'MiTurno',
+    title: 'MiTurno | Turnos médicos online',
+    description: 'Encontrá especialistas, consultá disponibilidad real y reservá tu turno online.',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'MiTurno | Turnos médicos online',
+    description: 'Encontrá especialistas y reservá tu turno médico online.',
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +47,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </footer>
         </Providers>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'MiTurno',
+              url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3001',
+              description: 'Plataforma para buscar especialistas y reservar turnos médicos online.',
+            }),
+          }}
+        />
       </body>
     </html>
   );
