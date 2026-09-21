@@ -32,7 +32,7 @@ La identidad y los roles se resuelven desde la base, no desde campos enviados po
 
 ## Completitud y pruebas
 
-Verificación final local: **93 tests Python**, **4 tests PostgreSQL**, **10 tests del cliente web** y **3 recorridos Playwright** aprobados; build de producción Next.js aprobado. Los cuatro tests PostgreSQL se omiten en la suite habitual y se ejecutaron por separado con su variable de conexión.
+Verificación local actualizada al cierre de sesiones e historias clínicas (21 de septiembre de 2026): **184 tests Python**, **24 tests PostgreSQL**, **19 tests del cliente web** y **11 recorridos Playwright** aprobados; build de producción Next.js aprobado. Los 24 tests PostgreSQL se omiten en la suite habitual y se ejecutaron por separado con su variable de conexión. Ver [criterios, evidencia y límites del cierre D01/A11](CIERRE_SEGURIDAD_SESIONES_HISTORIAS.md).
 
 Las suites usan peticiones HTTP a FastAPI, bases temporales y aserciones de persistencia. PostgreSQL tiene pruebas separadas de concurrencia y triggers. Playwright ejercita el frontend con API y base temporal reales. Los proveedores externos usan doubles o `httpx.MockTransport`, limitados a la frontera HTTP; falta probarlos con credenciales sandbox reales.
 

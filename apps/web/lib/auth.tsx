@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
+  const [sessionEnded, setSessionEnded] = useState(false);
 
   useEffect(() => {
     try {
@@ -66,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const apply = useCallback((s: Session | null) => {
+    if (s) setSessionEnded(false);
     queryClient.clear();
     setDemoMode(Boolean(s?.demo));
     persist(s);
@@ -74,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   useEffect(() => {
-    const expired = () => apply(null);
+    const expired = () => { apply(null); setSessionEnded(true); };
     window.addEventListener('miturno:session-expired', expired);
     return () => window.removeEventListener('miturno:session-expired', expired);
   }, [apply]);
@@ -138,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ session, ready, login, completeGoogleLogin, register, demoLogin, logout }}>
+      {sessionEnded && <p role="alert" className="bg-amber-50 p-4 text-center text-amber-900">Tu sesión terminó o tu cuenta dejó de estar activa. Volvé a ingresar; si tu cuenta está suspendida, contactá al administrador.</p>}
       {children}
     </AuthContext.Provider>
   );

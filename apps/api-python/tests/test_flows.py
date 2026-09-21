@@ -104,6 +104,8 @@ def test_extra_and_schedule_validity(system):
     offered = future_slots(system)
     start = datetime.fromisoformat(offered[0]["startAt"].replace("Z", "+00:00"))
     local_date = (start - timedelta(hours=3)).date()
+    # La consulta debe partir de las 09:00 locales, no de la hora actual.
+    start = start.replace(year=local_date.year, month=local_date.month, day=local_date.day, hour=12, minute=0, second=0, microsecond=0)
     with system.database.transaction() as db:
         for schedule in db.scalars(select(Schedule)):
             schedule.validFrom = local_date + timedelta(days=30)

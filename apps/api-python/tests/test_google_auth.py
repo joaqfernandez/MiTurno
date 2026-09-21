@@ -201,3 +201,27 @@ def test_upgrade_preserves_existing_users_and_clinical_entries(tmp_path):
         assert list(db.execute(select(User.id, User.email))) == expected
         assert list(db.execute(select(MedicalEntry.id, MedicalEntry.content))) == entries
     database.engine.dispose()
+
+
+def test_google_ticket_cannot_survive_suspend_and_reactivate(google):
+    callback(google, begin(google))
+    from sqlalchemy import select
+    from app.models import User
+    with google.system.database.transaction() as db:
+        user_id = db.scalar(select(User.id).where(User.googleSubject == 'google-subject'))
+    for status in ('SUSPENDED', 'ACTIVE'):
+        assert google.system.client.patch(f'/api/admin/users/{user_id}/status',
+            headers=google.system.headers('admin'), json={'status': status}).status_code == 200
+    assert complete(google).status_code == 401
+    callback(google, begin(google))
+    assert complete(google).status_code == 200
+
+
+def test_google_link_cannot_survive_suspend_and_reactivate(google):
+    state = begin(google, 'doctor')
+    google.changes['email'] = 'doctor@example.com'
+    for status in ('SUSPENDED', 'ACTIVE'):
+        assert google.system.client.patch('/api/admin/users/user-doctor/status',
+            headers=google.system.headers('admin'), json={'status':status}).status_code == 200
+    assert callback(google, state).headers['location'].endswith('google=failed')
+    assert complete(google).status_code == 401

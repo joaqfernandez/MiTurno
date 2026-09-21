@@ -32,7 +32,7 @@ def issue_tokens(db, user, settings):
     raw = secrets.token_urlsafe(48)
     db.add(RefreshToken(userId=user.id, tokenHash=digest(raw), expiresAt=now() + timedelta(days=30)))
     token = jwt.encode({"sub": user.id, "pid": payload["patientProfileId"], "did": payload["doctorProfileId"],
-                       "iat": now(), "exp": now() + timedelta(seconds=settings.access_ttl)}, settings.secret, algorithm="HS256")
+                       "sv": user.sessionVersion, "iat": now(), "exp": now() + timedelta(seconds=settings.access_ttl)}, settings.secret, algorithm="HS256")
     return {"accessToken": token, "refreshToken": raw, "user": payload}
 
 @router.post("/register", status_code=201)
@@ -51,7 +51,7 @@ def register(body: Register, request: Request, db=Depends(session)):
 
 @router.post("/login")
 def login(body: Login, request: Request, db=Depends(session)):
-    user = db.scalar(select(User).where(User.email == str(body.email).lower()))
+    user = db.scalar(select(User).where(User.email == str(body.email).lower()).with_for_update())
     try:
         if user is None or not user.passwordHash or not passwords.verify(user.passwordHash, body.password):
             raise HTTPException(401, "Credenciales inválidas")
@@ -66,12 +66,13 @@ def refresh(body: Refresh, request: Request, db=Depends(session)):
     stored = db.scalar(select(RefreshToken).where(RefreshToken.tokenHash == digest(body.refreshToken)))
     if not stored:
         raise HTTPException(401, "Refresh inválido")
+    # Orden de locks compartido con suspensión: usuario antes de refresh.
+    user = db.scalar(select(User).where(User.id == stored.userId).with_for_update().execution_options(populate_existing=True))
+    if user is None or user.status != "ACTIVE":
+        raise HTTPException(403, "La cuenta no está activa", headers={"X-Session-Invalid": "1"})
     consumed = db.execute(update(RefreshToken).where(RefreshToken.id == stored.id, RefreshToken.revokedAt.is_(None), RefreshToken.expiresAt > now()).values(revokedAt=now()))
     if consumed.rowcount != 1:
         raise HTTPException(401, "Refresh vencido o utilizado")
-    user = db.get(User, stored.userId)
-    if user.status != "ACTIVE":
-        raise HTTPException(403, "La cuenta no está activa")
     return issue_tokens(db, user, request.app.state.settings)
 
 @router.post("/logout")

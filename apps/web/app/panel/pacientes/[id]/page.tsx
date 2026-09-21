@@ -9,6 +9,7 @@ import { initials } from '@/lib/format';
 import { Avatar, Badge, Button, Card, Field, Input, PageHeader, Skeleton, Textarea } from '@/components/ui';
 import { ChevronLeftIcon, FileTextIcon, PhoneIcon, PlusIcon, ShieldCheckIcon } from '@/components/icons';
 import type { MedicalRecordEntry } from '@/lib/types';
+import { useAuth } from '@/lib/auth';
 
 function BaseDataItem({ label, value }: { label: string; value?: string }) {
   return (
@@ -47,8 +48,9 @@ function EntryCard({ entry, all }: { entry: MedicalRecordEntry; all: MedicalReco
 }
 
 export default function PatientRecordPage({ params }: { params: { id: string } }) {
+  const { session } = useAuth();
   const { data: patients } = useMyPatients();
-  const { data: record, isLoading } = useMedicalRecord(params.id);
+  const { data: record, isLoading, error } = useMedicalRecord(params.id);
   const addEntry = useAddRecordEntry(params.id);
 
   const patient = patients?.find((p) => p.id === params.id);
@@ -62,20 +64,28 @@ export default function PatientRecordPage({ params }: { params: { id: string } }
     () => [...(record?.entries ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [record],
   );
+  const amendableEntries = entries.filter(entry => entry.canAmend || session?.demo);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
-    await addEntry.mutateAsync({
-      title: title.trim(),
-      content: content.trim(),
-      amendsEntryId: amendsId || undefined,
-    });
+    try {
+      await addEntry.mutateAsync({
+        title: title.trim(),
+        content: content.trim(),
+        amendsEntryId: amendsId || undefined,
+      });
+    } catch {
+      // El formulario conserva el texto; el error de la API se muestra debajo.
+      return;
+    }
     setTitle('');
     setContent('');
     setAmendsId('');
     setShowForm(false);
   }
+
+  if (error) return <main><p role="alert">No pudimos abrir la historia clínica. {error.message}</p></main>;
 
   return (
     <main>
@@ -143,7 +153,7 @@ export default function PatientRecordPage({ params }: { params: { id: string } }
               <h2 className="text-sm font-semibold text-slate-900">Nueva evolución</h2>
               <p className="mt-1 text-xs text-slate-500">
                 Las entradas son inmutables: no se editan ni se borran. Para corregir una entrada anterior, creá una
-                enmienda que la referencie.
+                enmienda de una entrada propia. La enmienda conserva el turno original.
               </p>
               <form onSubmit={submit} className="mt-4 flex flex-col gap-4">
                 <Field label="Título" htmlFor="entry-title" required>
@@ -166,7 +176,7 @@ export default function PatientRecordPage({ params }: { params: { id: string } }
                     placeholder="Hallazgos, diagnóstico, indicaciones…"
                   />
                 </Field>
-                {entries.length > 0 && (
+                {amendableEntries.length > 0 && (
                   <Field
                     label="Enmienda de"
                     htmlFor="entry-amends"
@@ -179,7 +189,7 @@ export default function PatientRecordPage({ params }: { params: { id: string } }
                       className="block min-h-11 w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3.5 text-[15px] text-slate-900 focus:border-brand-500"
                     >
                       <option value="">No es una enmienda</option>
-                      {entries.map((en) => (
+                      {amendableEntries.map((en) => (
                         <option key={en.id} value={en.id}>
                           {en.title} — {format(parseISO(en.createdAt), 'd/M/yyyy')}
                         </option>
@@ -187,6 +197,7 @@ export default function PatientRecordPage({ params }: { params: { id: string } }
                     </select>
                   </Field>
                 )}
+                {addEntry.error && <p role="alert" className="text-sm text-danger-700">{addEntry.error.message}</p>}
                 <div className="flex justify-end gap-3">
                   <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>
                     Cancelar

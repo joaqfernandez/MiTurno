@@ -35,6 +35,7 @@ class User(Entity, Base):
     phone: Mapped[str | None] = mapped_column(String(64))
     roles: Mapped[list] = mapped_column(JSON, default=lambda: ["PATIENT"])
     status: Mapped[str] = mapped_column(String(32), default="ACTIVE")
+    sessionVersion: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     updatedAt: Mapped[datetime] = mapped_column(UTCDateTime, default=now, onupdate=now)
 
 
@@ -239,5 +240,6 @@ class OAuthRequest(Entity, Base):
     bindingHash: Mapped[str] = mapped_column(String(64))
     purpose: Mapped[str] = mapped_column(String(16))
     userId: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    sessionVersion: Mapped[int | None] = mapped_column(Integer)
     nonce: Mapped[str] = mapped_column(String(128))
     expiresAt: Mapped[datetime] = mapped_column(UTCDateTime, index=True)

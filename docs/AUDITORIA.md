@@ -1,3 +1,5 @@
+> Cierre posterior en Python (21 de septiembre de 2026): **D01 — usuarios suspendidos/sesiones y A11 — referencias clínicas** quedaron resueltos y verificados localmente. Ver [criterios, pruebas y límites del cierre](CIERRE_SEGURIDAD_SESIONES_HISTORIAS.md). Los hallazgos que siguen describen el estado histórico; no se extiende este cierre al resto de la auditoría.
+
 > Documento histórico del backend NestJS. Para el estado posterior a la migración Python, ver [MIGRACION_PYTHON.md](MIGRACION_PYTHON.md).
 
 # Auditoría del proyecto — 17 de septiembre de 2026
@@ -213,7 +215,7 @@ La coincidencia `TODO acceso` en el comentario de MedicalRecordsService signific
 | `npm run test --workspace apps/api -- --runInBand` | **Falla**: `jest: command not found` (127); no hay suite ejecutable declarada completa. |
 | `node docs/audit-probes.cjs` | **Pasa sus seis grupos de comprobaciones**, que confirman comportamientos defectuosos descritos. Ejecuta servicios/pipe/fallback reales con persistencia simulada. |
 
-Las sondas están en [audit-probes.cjs](audit-probes.cjs), son reproducibles y se espera que dejen de confirmar estos defectos al corregirlos. No constituyen tests de aceptación del producto. No se hicieron migraciones, cambios de datos reales, arranque de infraestructura, pruebas de concurrencia PostgreSQL, build de producción, navegación e2e ni llamadas a Google/MP/Resend/Twilio. Las garantías que requieren esos entornos quedan explícitamente **sin verificar**; no se presentan como flujos aprobados.
+Las sondas históricas se ejecutaron desde `docs/audit-probes.cjs`; ese archivo ya no está presente en el árbol actual. La evidencia reproducible del backend Python se enlaza en el cierre posterior al inicio de este documento. No constituyen tests de aceptación del producto. No se hicieron migraciones, cambios de datos reales, arranque de infraestructura, pruebas de concurrencia PostgreSQL, build de producción, navegación e2e ni llamadas a Google/MP/Resend/Twilio. Las garantías que requieren esos entornos quedan explícitamente **sin verificar**; no se presentan como flujos aprobados.
 
 ## Orden de remediación propuesto
 

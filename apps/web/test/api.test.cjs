@@ -85,3 +85,50 @@ test('a refresh in flight cannot overwrite a newly selected account', async () =
   await assert.rejects(api.api('/patients/me'), error => error.status === 409);
   assert.equal(localStorage.getItem('accessToken'), 'other-user');
 });
+
+for (const status of [401, 403]) {
+  test(`revoked session ${status} clears credentials without attempting refresh`, async () => {
+    localStorage.setItem('accessToken', 'old');
+    localStorage.setItem('refreshToken', 'refresh');
+    localStorage.setItem('miturno.session', '{}');
+    let calls = 0, expired = false;
+    window.addEventListener('miturno:session-expired', () => { expired = true; });
+    global.fetch = async () => { calls++; return Response.json({detail:'La cuenta no está activa'}, {status, headers:{'X-Session-Invalid':'1'}}); };
+    await assert.rejects(api.api('/medical-records/patient'), error => error.status === status);
+    assert.equal(calls, 1);
+    assert.equal(localStorage.getItem('accessToken'), null);
+    assert.equal(localStorage.getItem('refreshToken'), null);
+    assert.equal(localStorage.getItem('miturno.session'), null);
+    assert(expired);
+  });
+}
+
+test('ordinary authorization denial does not terminate the session', async () => {
+  localStorage.setItem('accessToken', 'valid');
+  global.fetch = async () => Response.json({detail:'Sin relación asistencial'}, {status:403});
+  await assert.rejects(api.api('/medical-records/other'), error => error.status === 403);
+  assert.equal(localStorage.getItem('accessToken'), 'valid');
+});
+
+test('delayed suspension response does not clear a different account', async () => {
+  localStorage.setItem('accessToken', 'old');
+  global.fetch = async () => {
+    localStorage.setItem('accessToken', 'new-account');
+    return Response.json({}, {status:403, headers:{'X-Session-Invalid':'1'}});
+  };
+  await assert.rejects(api.api('/appointments'), error => error.status === 403);
+  assert.equal(localStorage.getItem('accessToken'), 'new-account');
+});
+
+test('suspension on the retry after refresh also clears the renewed session', async () => {
+  localStorage.setItem('accessToken', 'old');
+  localStorage.setItem('refreshToken', 'refresh');
+  global.fetch = async (url, init) => {
+    if (url.endsWith('/auth/refresh')) return Response.json({accessToken:'new', refreshToken:'new-refresh'});
+    if (init.headers.Authorization === 'Bearer old') return Response.json({}, {status:401});
+    return Response.json({}, {status:403, headers:{'X-Session-Invalid':'1'}});
+  };
+  await assert.rejects(api.api('/appointments/me'), error => error.status === 403);
+  assert.equal(localStorage.getItem('accessToken'), null);
+  assert.equal(localStorage.getItem('refreshToken'), null);
+});

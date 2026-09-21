@@ -40,7 +40,7 @@ def create_app(database_path: Path | None = None, secret: str | None = None, *, 
     app.state.database, app.state.settings = database, settings
     app.state.login_provider = login_google
     app.state.payment_provider, app.state.calendar_provider = provider, google
-    app.add_middleware(CORSMiddleware, allow_origins=[settings.web_url], allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"])
+    app.add_middleware(CORSMiddleware, allow_origins=[settings.web_url], allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"], expose_headers=["X-Session-Invalid"])
 
     attempts, mutex = OrderedDict(), Lock()
     @app.middleware("http")

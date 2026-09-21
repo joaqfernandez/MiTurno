@@ -37,20 +37,24 @@ async function refreshSession(): Promise<boolean> {
 
 export async function apiResponse(path: string, init?: RequestInit): Promise<Response> {
   const originalToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  let sentToken = originalToken;
   const send = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    sentToken = token;
     return fetch(`${BASE}/api${path}`, {
       ...init, credentials: 'include',
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init?.headers },
     });
   };
   let response = await send();
-  if (response.status === 401 && !path.startsWith('/auth/') && typeof window !== 'undefined') {
+  const invalidSession = () => response.headers.get('X-Session-Invalid') === '1';
+  if (response.status === 401 && !invalidSession() && !path.startsWith('/auth/') && typeof window !== 'undefined') {
     if (localStorage.getItem('accessToken') !== originalToken) throw new ApiError('La sesión cambió.', 409);
     if (!refreshing) refreshing = refreshSession().finally(() => { refreshing = null; });
     if (await refreshing) response = await send();
-    else expireSession();
+    else if (localStorage.getItem('accessToken') === originalToken) expireSession();
   }
+  if (invalidSession() && sentToken && localStorage.getItem('accessToken') === sentToken) expireSession();
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     const message = body?.message ?? body?.detail ?? response.statusText;

@@ -85,7 +85,7 @@ def test_bad_jwt(system, kind):
 
 
 def test_identity_is_derived_from_db_not_pid_claim(system):
-    token = jwt.encode({"sub": "user-own", "pid": "patient-other", "exp": datetime.now(timezone.utc) + timedelta(minutes=1)}, SECRET, algorithm="HS256")
+    token = jwt.encode({"sub": "user-own", "pid": "patient-other", "sv": 0, "exp": datetime.now(timezone.utc) + timedelta(minutes=1)}, SECRET, algorithm="HS256")
     response = patch(system, {"firstName": "Juana"}, {"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     assert response.json()["id"] == "patient-own"

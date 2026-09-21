@@ -62,6 +62,8 @@ Crean y eliminan bases exclusivas de prueba; no modifican la demo. Los tests de 
 ## Código y estado
 
 - [Configurar login Google y Calendar](docs/google-oauth.md)
+- [Integridad de historias clínicas y enmiendas](docs/integridad-historias-clinicas.md)
+- [Cierre de seguridad: sesiones e historias clínicas](docs/CIERRE_SEGURIDAD_SESIONES_HISTORIAS.md)
 - [Guía del backend Python](apps/api-python/README.md)
 - [Migración, evidencias y límites](docs/MIGRACION_PYTHON.md)
 - [Roadmap y deuda pendiente](docs/ROADMAP.md)

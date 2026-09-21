@@ -31,7 +31,9 @@ def current_user(request: Request, credentials: HTTPAuthorizationCredentials | N
     if user is None:
         raise HTTPException(401, "Sesión inválida")
     if user.status != "ACTIVE":
-        raise HTTPException(403, "La cuenta no está activa")
+        raise HTTPException(403, "La cuenta no está activa", headers={"X-Session-Invalid": "1"})
+    if type(claims.get("sv")) is not int or claims["sv"] != user.sessionVersion:
+        raise HTTPException(401, "Sesión revocada", headers={"X-Session-Invalid": "1"})
     return Principal(user, db.scalar(select(Patient).where(Patient.userId == user.id)), db.scalar(select(Doctor).where(Doctor.userId == user.id)))
 
 

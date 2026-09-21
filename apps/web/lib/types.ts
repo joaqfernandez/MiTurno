@@ -91,6 +91,8 @@ export interface MedicalRecordEntry {
   createdAt: string;
   doctor: { firstName: string; lastName: string };
   amendsEntryId?: string;
+  canAmend?: boolean;
+  appointmentId?: string | null;
 }
 
 export interface MedicalRecord {

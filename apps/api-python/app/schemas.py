@@ -141,8 +141,8 @@ class CreateEntry(Input):
     patientId: StrictStr = Field(min_length=1, max_length=64)
     title: StrictStr = Field(min_length=1, max_length=300)
     content: StrictStr = Field(min_length=1, max_length=50000)
-    appointmentId: StrictStr | None = Field(default=None, max_length=64)
-    amendsEntryId: StrictStr | None = Field(default=None, max_length=64)
+    appointmentId: StrictStr | None = Field(default=None, min_length=1, max_length=64)
+    amendsEntryId: StrictStr | None = Field(default=None, min_length=1, max_length=64)
 
 
 class AppointmentState(Input):

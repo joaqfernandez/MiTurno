@@ -20,6 +20,7 @@ class Database:
             @event.listens_for(self.engine, "connect")
             def configure(connection, _):
                 connection.execute("PRAGMA foreign_keys=ON")
+                connection.execute("PRAGMA recursive_triggers=ON")
                 connection.execute("PRAGMA busy_timeout=30000")
         self.sessions = sessionmaker(self.engine, expire_on_commit=False)
 
@@ -40,6 +41,8 @@ class Database:
         Base.metadata.create_all(self.engine)
         with self.engine.begin() as connection:
             install_guards(connection)
+            from .clinical_integrity_v1 import install
+            install(connection)
 
 
 def install_guards(connection):

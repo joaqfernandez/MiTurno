@@ -5,6 +5,7 @@ Las marcas indican implementación local verificada; las integraciones externas 
 ## Núcleo
 - [x] Backend FastAPI/SQLAlchemy, migración Alembic y PostgreSQL nuevo.
 - [x] Registro/login, refresh rotativo, roles y activación administrativa.
+- [x] Suspensión con revocación persistente de sesiones, tickets Google y pruebas de concurrencia. [Cierre D01](CIERRE_SEGURIDAD_SESIONES_HISTORIAS.md).
 - [x] Perfil paciente con campos permitidos y protección contra cambios de roles/relaciones.
 - [x] Agenda, disponibilidad, reserva, cancelación y exclusión de solapamientos.
 - [x] Frontend TypeScript conectado a la API y caché aislada por sesión.
@@ -23,6 +24,7 @@ Las marcas indican implementación local verificada; las integraciones externas 
 
 ## Historia clínica
 - [x] Entradas inmutables, enmiendas y auditoría atómica respaldada por triggers.
+- [x] Referencias de historia, autor y episodio protegidas por API y base; migración y pruebas negativas/concurrentes. [Cierre A11](CIERRE_SEGURIDAD_SESIONES_HISTORIAS.md).
 - [x] Pantallas de lectura/escritura del médico y lectura del paciente.
 - [ ] Adjuntos privados R2 con autorización de carga/descarga.
 - [ ] Exportación PDF.

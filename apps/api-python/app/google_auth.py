@@ -65,7 +65,8 @@ def create_request(db, purpose, response, settings, user_id=None):
     binding = raw if purpose == "session" else secrets.token_urlsafe(32)
     ttl = 60 if purpose == "session" else 600
     db.execute(delete(OAuthRequest).where(OAuthRequest.expiresAt <= now()))
-    db.add(OAuthRequest(tokenHash=digest(raw), bindingHash=digest(binding), purpose=purpose,
+    version = db.get(User, user_id).sessionVersion if user_id else None
+    db.add(OAuthRequest(sessionVersion=version, tokenHash=digest(raw), bindingHash=digest(binding), purpose=purpose,
                         userId=user_id, nonce=nonce, expiresAt=now() + timedelta(seconds=ttl)))
     cookie(response, purpose, binding, settings, ttl)
     db.flush()
@@ -143,6 +144,8 @@ def callback(request: Request, code: str | None = None, state: str | None = None
         # Savepoint: consume state even if identity creation conflicts or provider fails.
         with db.begin_nested():
             user = resolve_user(db, claims, pending.userId)
+            if pending.userId and pending.sessionVersion != user.sessionVersion:
+                raise ValueError("Solicitud revocada")
             create_request(db, "session", response, settings, user.id)
         response.headers["location"] = f"{settings.web_url}/auth/google/callback"
     except HTTPException as exc:
@@ -166,7 +169,7 @@ def complete(request: Request, db=Depends(session)):
         raw = request.cookies.get("miturno_oauth_session")
         pending = consume_request(db, "session", raw, raw)
         user = db.scalar(select(User).where(User.id == pending.userId).with_for_update())
-        if user is None or user.status != "ACTIVE":
+        if user is None or user.status != "ACTIVE" or pending.sessionVersion != user.sessionVersion:
             return response
         response = JSONResponse(issue_tokens(db, user, settings))
         response.delete_cookie("miturno_oauth_session", path=COOKIE_PATH)
