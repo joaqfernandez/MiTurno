@@ -1,6 +1,7 @@
 # Instrucciones para todo el repositorio
 
 - Escribir en español los mensajes de commit, tanto el título como el cuerpo cuando lo haya. Conservar nombres técnicos, identificadores y rutas cuando corresponda.
+- **Registrar cada cambio en [CAMBIOS.md](CAMBIOS.md)**: una línea arriba de todo con fecha y hora (Argentina), quién lo hizo (agente o persona), qué cambió muy resumido y el commit o rama. Va en el mismo commit que el cambio. Sin excepciones, aunque sea un cambio chico o solo de documentación.
 
 ## Contexto del proyecto
 

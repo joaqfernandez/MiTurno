@@ -61,6 +61,7 @@ Crean y eliminan bases exclusivas de prueba; no modifican la demo. Los tests de 
 ## Código y estado
 
 - [Contexto y reglas para agentes de IA](AGENTS.md)
+- [Registro de cambios](CAMBIOS.md)
 - [Verificación automática (CI) y estado de las pruebas](docs/CI.md)
 - [Configurar login Google y Calendar](docs/google-oauth.md)
 - [Integridad de historias clínicas y enmiendas](docs/integridad-historias-clinicas.md)
