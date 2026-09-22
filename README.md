@@ -50,17 +50,17 @@ npm run test:e2e
 npm run build:web
 ```
 
-Las pruebas habituales usan bases SQLite temporales. Para concurrencia e integridad en PostgreSQL, con Docker iniciado:
+Las pruebas habituales usan bases SQLite temporales y omiten las de PostgreSQL. Para correr la suite completa, incluidas concurrencia e integridad en PostgreSQL, con Docker iniciado:
 
 ```bash
-cd apps/api-python
-TEST_POSTGRES_URL=postgresql+psycopg://turnos:turnos_dev@127.0.0.1:55432/postgres .venv/bin/python -m pytest tests/test_postgres.py
+npm run test:api:pg
 ```
 
 Crean y eliminan bases exclusivas de prueba; no modifican la demo. Los tests de navegador usan API/Next en 3100/3101 y una SQLite temporal.
 
 ## Código y estado
 
+- [Contexto y reglas para agentes de IA](AGENTS.md)
 - [Configurar login Google y Calendar](docs/google-oauth.md)
 - [Integridad de historias clínicas y enmiendas](docs/integridad-historias-clinicas.md)
 - [Cierre de seguridad: sesiones e historias clínicas](docs/CIERRE_SEGURIDAD_SESIONES_HISTORIAS.md)

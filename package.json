@@ -13,6 +13,7 @@
     "db:migrate": "node scripts/backend.mjs migrate",
     "db:seed": "node scripts/backend.mjs seed",
     "test:api": "node scripts/backend.mjs test",
+    "test:api:pg": "node scripts/backend.mjs test-pg",
     "test:web": "npm run test --workspace apps/web",
     "build:web": "npm run build --workspace apps/web",
     "test:e2e": "npm run test:e2e --workspace apps/web"
