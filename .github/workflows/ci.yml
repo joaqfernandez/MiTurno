@@ -1,0 +1,89 @@
+# Verificación automática. Documentación y estado: docs/CI.md
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API (SQLite + PostgreSQL)
+    # En pull requests ya corrió con el push de la misma rama.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: turnos
+          POSTGRES_PASSWORD: turnos_dev
+          POSTGRES_DB: miturno_python
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U turnos -d miturno_python"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: apps/api-python/requirements.txt
+      - run: npm run setup:api
+      - run: npm run test:api:pg
+
+  web:
+    name: Web (tests, tipos y build)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:web
+      - run: npx tsc --noEmit --incremental false -p tsconfig.json
+        working-directory: apps/web
+      - run: npm run build:web
+
+  e2e:
+    name: Navegador (Playwright)
+    # Más lento: solo al proponer cambios a main.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: apps/api-python/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm run setup:api
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-trazas
+          path: apps/web/test-results/
+          retention-days: 7

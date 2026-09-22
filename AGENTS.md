@@ -36,6 +36,6 @@ Consecuencias para cualquier agente que trabaje acá:
 
 Un cambio de backend no está verificado si solo se corrió `test:api`: los tests PostgreSQL cubren las garantías de concurrencia.
 
-## Trabajo en curso (septiembre 2026)
+## Verificación automática (CI)
 
-Se está incorporando verificación automática: comando para correr los tests PostgreSQL sin omitirlos, chequeo automático de migraciones y ejecución de todas las suites en GitHub Actions en cada push. Al completarse, actualizar esta sección y la forma de trabajo (ramas y pull requests con CI en verde antes de mezclar a `main`).
+GitHub Actions ejecuta las suites en cada push y en los pull requests. Qué corre, la forma de trabajo (rama → PR → mezclar solo con CI en verde), lo pendiente y la bitácora están en [docs/CI.md](docs/CI.md). Al cambiar tests, migraciones o el workflow, actualizar ese archivo.
