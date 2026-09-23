@@ -1,0 +1,55 @@
+"""D10: la configuración inválida debe fallar al arrancar, no en el primer uso."""
+import pytest
+from app.config import Settings
+from conftest import SECRET
+
+PRODUCTION = dict(environment="production", database_url="postgresql://db/miturno", web_url="https://miturno.example",
+                  api_url="https://api.miturno.example", encryption_key="12" * 32)
+
+
+def settings(**overrides):
+    return Settings(**{"database_url": "sqlite://", "secret": SECRET, **overrides})
+
+
+def test_valid_development_and_production_are_accepted():
+    assert settings().environment == "development"
+    # En desarrollo Calendar queda deshabilitado sin clave; no impide arrancar.
+    assert settings(encryption_key="").encryption_key == ""
+    assert settings(**PRODUCTION).environment == "production"
+
+
+def test_short_jwt_secret_is_rejected():
+    with pytest.raises(ValueError, match="JWT_ACCESS_SECRET"):
+        settings(secret="corto")
+
+
+@pytest.mark.parametrize("environment", ["produccion", "Production", "prod", "staging", ""])
+def test_unknown_environment_is_rejected(environment):
+    # Un error de tipeo no puede desactivar en silencio los controles de producción.
+    with pytest.raises(ValueError, match="APP_ENV"):
+        settings(environment=environment)
+
+
+def test_unknown_environment_is_rejected_when_loading_from_env(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "produccion")
+    monkeypatch.setenv("JWT_ACCESS_SECRET", SECRET)
+    with pytest.raises(ValueError, match="APP_ENV"):
+        Settings.load()
+
+
+@pytest.mark.parametrize("change,message", [
+    ({"database_url": "sqlite:///prod.sqlite3"}, "PostgreSQL"),
+    ({"web_url": "http://miturno.example"}, "HTTPS"),
+    ({"api_url": "http://api.miturno.example"}, "HTTPS"),
+    ({"google_redirect_uri": "http://api.miturno.example/cb"}, "Google HTTPS"),
+    ({"google_login_redirect_uri": "http://api.miturno.example/cb"}, "Google HTTPS"),
+])
+def test_production_requires_secure_infrastructure(change, message):
+    with pytest.raises(ValueError, match=message):
+        settings(**{**PRODUCTION, **change})
+
+
+@pytest.mark.parametrize("key", ["", "abc", "zz" * 32, "12" * 16, "00" * 32])
+def test_production_requires_valid_encryption_key(key):
+    with pytest.raises(ValueError, match="ENCRYPTION_KEY"):
+        settings(**{**PRODUCTION, "encryption_key": key})

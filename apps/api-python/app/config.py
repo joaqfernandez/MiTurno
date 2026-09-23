@@ -4,6 +4,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
+# Lista cerrada: un valor mal escrito no puede desactivar los controles de producción.
+ENVIRONMENTS = ("development", "production")
+
+
+def valid_encryption_key(value):
+    try:
+        key = bytes.fromhex(value)
+    except ValueError:
+        return False
+    return len(key) == 32 and any(key)
 
 
 @dataclass
@@ -30,7 +40,11 @@ class Settings:
     def __post_init__(self):
         if len(self.secret.encode()) < 32:
             raise ValueError("JWT_ACCESS_SECRET debe tener al menos 32 bytes")
+        if self.environment not in ENVIRONMENTS:
+            raise ValueError(f"APP_ENV debe ser uno de {', '.join(ENVIRONMENTS)}; se recibió {self.environment!r}")
         if self.environment == "production":
+            if not valid_encryption_key(self.encryption_key):
+                raise ValueError("Producción requiere ENCRYPTION_KEY de 32 bytes aleatorios en hexadecimal")
             if not self.database_url.startswith("postgresql"):
                 raise ValueError("Producción requiere PostgreSQL")
             if not self.web_url.startswith("https://") or not self.api_url.startswith("https://"):

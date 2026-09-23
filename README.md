@@ -63,6 +63,7 @@ Crean y eliminan bases exclusivas de prueba; no modifican la demo. Los tests de 
 - [Contexto y reglas para agentes de IA](AGENTS.md)
 - [Registro de cambios](CAMBIOS.md)
 - [Verificación automática (CI) y estado de las pruebas](docs/CI.md)
+- [Cobertura de hallazgos por pruebas](docs/COBERTURA_HALLAZGOS.md)
 - [Configurar login Google y Calendar](docs/google-oauth.md)
 - [Integridad de historias clínicas y enmiendas](docs/integridad-historias-clinicas.md)
 - [Cierre de seguridad: sesiones e historias clínicas](docs/CIERRE_SEGURIDAD_SESIONES_HISTORIAS.md)
