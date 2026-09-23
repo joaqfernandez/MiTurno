@@ -39,4 +39,4 @@ Un cambio de backend no está verificado si solo se corrió `test:api`: los test
 
 ## Verificación automática (CI)
 
-GitHub Actions ejecuta las suites en cada push y en los pull requests. Qué corre, la forma de trabajo (rama → PR → mezclar solo con CI en verde), lo pendiente y la bitácora están en [docs/CI.md](docs/CI.md). Al cambiar tests, migraciones o el workflow, actualizar ese archivo.
+GitHub Actions ejecuta las suites en cada pull request hacia `main` y al mezclar; un push a una rama sin PR no lo dispara. Qué corre, la forma de trabajo (rama → PR → mezclar solo con CI en verde), lo pendiente y la bitácora están en [docs/CI.md](docs/CI.md). Al cambiar tests, migraciones o el workflow, actualizar ese archivo.

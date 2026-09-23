@@ -6,6 +6,7 @@ Formato: `AAAA-MM-DD HH:MM (hora Argentina) · quién · qué cambió, muy resum
 
 ---
 
+- 2026-09-22 22:20 · Claude Code · CI sin checks duplicados: los tres jobs corren una vez por PR y al mezclar en `main` · rama `ci/sin-checks-duplicados`
 - 2026-09-22 21:45 · Claude Code · Tests de hallazgos sin cobertura (`test_hallazgos.py`, `test_config.py`), corrige validación de `APP_ENV` y `ENCRYPTION_KEY` (D10) y agrega `docs/COBERTURA_HALLAZGOS.md` · rama `tests/cobertura-hallazgos`
 - 2026-09-22 21:10 · Claude Code · Corrige test PostgreSQL intermitente (falla ~50%, detectado por el primer run del CI) y actualiza acciones del workflow · rama `ci/github-actions`
 - 2026-09-22 20:55 · Claude Code · Crea este registro de cambios y la regla en AGENTS.md · rama `ci/github-actions`
