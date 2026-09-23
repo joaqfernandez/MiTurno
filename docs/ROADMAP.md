@@ -31,6 +31,9 @@ Las marcas indican implementación local verificada; las integraciones externas 
 - [ ] Registro de accesos denegados y definición de permisos administrativos mínimos.
 
 ## Antes de producción
+
+Checklist detallado y ordenado para la beta: [BETA.md](BETA.md).
+
 - [ ] Resolver avisos de seguridad de Next.js y dependencias web.
 - [ ] Monitoreo y logs estructurados sin datos sensibles.
 - [ ] Rate limiting compartido para varias réplicas.
