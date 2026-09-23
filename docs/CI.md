@@ -46,4 +46,5 @@ Se verificó que fallan ante: columna nueva sin migración, downgrade incompleto
 | --- | --- | --- |
 | 2026-09-22 | `npm run test:api:pg`: suite completa sin omitir PostgreSQL (`f76e99f`) | Local: 208 pasan, 0 omitidos |
 | 2026-09-22 | `test_migrations.py` (`613d0b0`) | Local: 213 pasan con PG; 187 pasan y 26 omitidos sin PG |
-| 2026-09-22 | Workflow `ci.yml` en rama `ci/github-actions` | Local antes del push: web 19/19, `tsc` ok, build ok, Playwright 11/11. Primer run en GitHub: pendiente |
+| 2026-09-22 | Workflow `ci.yml` en rama `ci/github-actions` | Local antes del push: web 19/19, `tsc` ok, build ok, Playwright 11/11. Primer run en GitHub: web ✅, API ❌ por test intermitente |
+| 2026-09-22 | Arreglo de `test_postgres_cancel_before_clinical_write_rechecks_status`: dependía del orden aleatorio de IDs (fallaba ~12/25). La app era correcta; el test no detectaba el bloqueo cuando ocurría en `relationship()`. Acciones actualizadas a versiones Node 24 | Local: 0/40 fallos; suite 213 pasan |
