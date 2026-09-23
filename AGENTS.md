@@ -17,6 +17,7 @@ Consecuencias para cualquier agente que trabaje acá:
 ## Antes de trabajar
 
 - Estado y deuda: [README.md](README.md), [docs/ROADMAP.md](docs/ROADMAP.md), [docs/MIGRACION_PYTHON.md](docs/MIGRACION_PYTHON.md).
+- Próximo objetivo del proyecto: beta cerrada con médicos reales. Checklist y orden en [docs/BETA.md](docs/BETA.md).
 - `docs/AUDITORIA.md` es histórica (backend NestJS retirado); sus rutas de archivo ya no existen.
 - Backend en `apps/api-python` (FastAPI, SQLAlchemy, Alembic); web en `apps/web` (Next.js).
 
