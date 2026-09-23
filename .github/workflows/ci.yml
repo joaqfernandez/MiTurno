@@ -1,8 +1,10 @@
 # Verificación automática. Documentación y estado: docs/CI.md
 name: CI
 
+# Una sola ejecución por evento, con los tres jobs: en cada PR hacia main y al mezclar.
 on:
   push:
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -16,8 +18,6 @@ permissions:
 jobs:
   api:
     name: API (SQLite + PostgreSQL)
-    # En pull requests ya corrió con el push de la misma rama.
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -44,7 +44,6 @@ jobs:
 
   web:
     name: Web (tests, tipos y build)
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -61,8 +60,6 @@ jobs:
 
   e2e:
     name: Navegador (Playwright)
-    # Más lento: solo al proponer cambios a main.
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
