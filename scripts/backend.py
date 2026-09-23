@@ -9,6 +9,8 @@ import venv
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "apps" / "api-python"
 PYTHON = BACKEND / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+# Servidor del docker-compose; los tests crean y eliminan sus propias bases, nunca tocan la demo.
+TEST_POSTGRES_URL = "postgresql+psycopg://turnos:turnos_dev@127.0.0.1:55432/postgres"
 
 
 def main():
@@ -39,12 +41,19 @@ def main():
         "migrate": ["-m", "alembic", "upgrade", "head"],
         "seed": ["-m", "app.seed"],
         "test": ["-m", "pytest"],
+        "test-pg": ["-m", "pytest"],
         "worker": ["-m", "app.worker"],
     }
     if action not in commands:
         raise SystemExit(f"Comando desconocido: {action}")
+    environment = dict(os.environ)
+    if action == "test-pg":
+        environment.setdefault("TEST_POSTGRES_URL", TEST_POSTGRES_URL)
+        check = "import psycopg, sys; psycopg.connect(sys.argv[1].replace('+psycopg', ''), connect_timeout=3).close()"
+        if subprocess.run([str(PYTHON), "-c", check, environment["TEST_POSTGRES_URL"]], capture_output=True).returncode:
+            raise SystemExit("No se pudo conectar a PostgreSQL. Iniciá Docker y ejecutá: docker compose -p miturno-python up -d --wait")
     try:
-        result = subprocess.run([str(PYTHON), *commands[action], *sys.argv[2:]], cwd=BACKEND)
+        result = subprocess.run([str(PYTHON), *commands[action], *sys.argv[2:]], cwd=BACKEND, env=environment)
         raise SystemExit(result.returncode)
     except KeyboardInterrupt:
         raise SystemExit(0)

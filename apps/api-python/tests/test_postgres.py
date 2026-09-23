@@ -191,7 +191,9 @@ def pg_clinical(pg):
         other_record = MedicalRecord(patientId=other_patient.id)
         db.add(other_record)
         start = now() + timedelta(days=30)
-        visit = Appointment(patientId=pg.patient_id, doctorId=pg.doctor_id,
+        # El prefijo 'z' ordena este turno después de los del seed: relationship() bloquea
+        # siempre otro turno y la espera observable queda en el bloqueo del episodio.
+        visit = Appointment(id='z' + uuid4().hex, patientId=pg.patient_id, doctorId=pg.doctor_id,
                             startAt=start, endAt=start + timedelta(minutes=30), status='CONFIRMED')
         db.add(visit)
         db.flush()
