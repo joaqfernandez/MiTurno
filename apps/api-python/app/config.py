@@ -38,6 +38,8 @@ class Settings:
     twilio_from: str = ""
     # Solo desarrollo: los emails se escriben en esta carpeta en vez de enviarse.
     mailbox_dir: str = ""
+    # Pedidos por minuto e IP a /api/auth. No se lee del entorno: solo el backend de Playwright lo cambia.
+    auth_rate_limit: int = 30
 
     def __post_init__(self):
         if len(self.secret.encode()) < 32:

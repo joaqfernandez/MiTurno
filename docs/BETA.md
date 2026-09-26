@@ -22,8 +22,8 @@ Los datos de salud son datos sensibles (Ley 25.326) y la historia clínica tiene
 ## Fase 1 — Seguridad del código
 
 - [x] **Actualizar Next.js.** `npm audit --omit=dev` (2026-09-22): 1 crítica (`next`), 2 altas (`postcss`, `nanoid`). Resuelto el 2026-09-25: Next 16.3.6 y React 19.3; `npm audit` sin vulnerabilidades. Rama `deps/actualiza-nextjs`.
-- [ ] **Recuperar contraseña** por email con token de un solo uso y expiración. Hoy no existe.
-- [ ] **Verificación de email** al registrarse. Hoy no existe.
+- [x] **Recuperar contraseña** por email con token de un solo uso y expiración. Hecho el 2026-09-26, rama `feature/recuperar-contrasena-verificar-email`; defensas y tests en `apps/api-python/README.md`.
+- [x] **Verificación de email** al registrarse. Mismo cambio: sin email confirmado no se puede ingresar. El envío real depende de «Email real con Resend» (Fase 2).
 - [ ] Revisar que logs y errores no incluyan datos personales ni clínicos.
 
 ## Fase 2 — Infraestructura (staging primero)
@@ -34,11 +34,12 @@ Hoy no hay ningún archivo de despliegue en el repositorio. Hay que correr cuatr
 - [ ] Postgres gestionado con **backups automáticos** y restauración a un punto en el tiempo.
 - [ ] **Probar una restauración** de backup y documentar el procedimiento.
 - [ ] Migraciones automáticas en cada despliegue (`alembic upgrade head`) antes de levantar la API.
-- [ ] Secretos solo en el proveedor: `APP_ENV=production`, `JWT_ACCESS_SECRET`, `ENCRYPTION_KEY` (la app no arranca si faltan o son inválidos, ver `test_config.py`).
+- [ ] Secretos solo en el proveedor: `APP_ENV=production`, `JWT_ACCESS_SECRET`, `ENCRYPTION_KEY`, `RESEND_API_KEY`, `EMAIL_FROM` (la app no arranca si faltan o son inválidos, ver `test_config.py`). Staging también necesita Resend desde el primer día.
 - [ ] Despliegue automático desde `main` cuando el CI está en verde.
 - [ ] **Monitoreo de errores** (por ejemplo Sentry) y alerta de caída sobre `/api/health`.
 - [ ] Email real con Resend y dominio verificado (SPF/DKIM).
 - [ ] Una sola instancia de API en la beta: el rate limiting actual es en memoria por proceso.
+- [ ] Configurar la API para leer la IP real detrás del proxy del hosting (uvicorn `--proxy-headers` y `--forwarded-allow-ips` con la IP del proxy). Sin esto todos los pedidos parecen venir de la misma IP y el límite por IP de `/api/auth` deja de servir.
 
 ### Criterios para elegir hosting
 

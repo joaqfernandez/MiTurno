@@ -13,7 +13,8 @@ interface AuthContextValue {
   ready: boolean;
   login: (email: string, password: string) => Promise<Session>;
   completeGoogleLogin: () => Promise<Session>;
-  register: (data: RegisterData) => Promise<Session | null>;
+  /** Crea la cuenta sin iniciar sesión: primero hay que confirmar el email. Devuelve el mensaje de la API. */
+  register: (data: RegisterData) => Promise<string>;
   demoLogin: (role: UserRole) => Session;
   logout: () => void;
 }
@@ -107,21 +108,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(
     async (data: RegisterData) => {
-      const res = await api<AuthResponse>('/auth/register', {
+      const res = await api<{ message: string }>('/auth/register', {
         method: 'POST',
         body: JSON.stringify(data),
       });
-      if (!res.accessToken) return null;
-      return apply({
-        accessToken: res.accessToken!,
-        refreshToken: res.refreshToken ?? undefined,
-        patientProfileId: res.user.patientProfileId ?? undefined,
-        role: data.role,
-        name: `${data.firstName} ${data.lastName}`,
-        email: data.email,
-      });
+      return res.message;
     },
-    [apply],
+    [],
   );
 
   const completeGoogleLogin = useCallback(async () => {

@@ -3,7 +3,8 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 let refreshing: Promise<boolean> | null = null;
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number) { super(message); }
+  /** `code` identifica errores que la pantalla trata distinto, por ejemplo EMAIL_NOT_VERIFIED. */
+  constructor(message: string, public status: number, public code?: string) { super(message); }
 }
 
 function expireSession() {
@@ -58,7 +59,7 @@ export async function apiResponse(path: string, init?: RequestInit): Promise<Res
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     const message = body?.message ?? body?.detail ?? response.statusText;
-    throw new ApiError(Array.isArray(message) ? message.join('. ') : String(message), response.status);
+    throw new ApiError(Array.isArray(message) ? message.join('. ') : String(message), response.status, typeof body?.code === 'string' ? body.code : undefined);
   }
   return response;
 }

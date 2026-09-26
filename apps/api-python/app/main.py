@@ -48,7 +48,7 @@ def create_app(database_path: Path | None = None, secret: str | None = None, *, 
         # Límite por proceso; desplegar un único worker API o agregar límite en proxy.
         if request.url.path.startswith(("/api/auth/", "/api/appointments/availability/", "/api/doctors")):
             key = (request.client.host if request.client else "unknown", request.url.path.split("/")[2])
-            cap = 30 if key[1] == "auth" else 240
+            cap = settings.auth_rate_limit if key[1] == "auth" else 240
             stamp = time.monotonic()
             with mutex:
                 bucket = attempts.setdefault(key, deque())

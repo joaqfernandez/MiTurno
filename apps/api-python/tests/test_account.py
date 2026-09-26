@@ -251,3 +251,10 @@ def test_suspended_status_alone_blocks_links(system, tmp_path):
     with system.database.transaction() as db:
         db.execute(update(User).where(User.id == "user-own").values(status="SUSPENDED"))
     assert reset(system, token).status_code == 400
+
+
+def test_auth_endpoints_are_rate_limited_per_ip(system):
+    # Frena la fuerza bruta de contraseñas y el envío masivo de links desde una misma IP.
+    codes = [forgot(system, f"persona{index}@example.com").status_code for index in range(31)]
+    assert codes[:30] == [202] * 30 and codes[30] == 429
+    assert login(system, "own@example.com", PASSWORD).status_code == 429

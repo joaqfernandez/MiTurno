@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: ['/'],
-      disallow: ['/panel/', '/admin/', '/mis-turnos', '/mi-historia', '/login', '/registro'],
+      disallow: ['/panel/', '/admin/', '/mis-turnos', '/mi-historia', '/login', '/registro', '/recuperar-contrasena', '/restablecer-contrasena', '/verificar-email'],
     },
     sitemap: `${siteUrl}/sitemap.xml`,
   };
