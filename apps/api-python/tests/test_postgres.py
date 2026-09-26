@@ -13,10 +13,10 @@ from app.auth import issue_tokens
 from app.config import Settings
 from app.database import Database
 from app.main import create_app
-from app.models import User, Doctor, Appointment, Patient, MedicalEntry, AuditLog, Job, Payment, now
+from app.models import User, Doctor, Appointment, Patient, MedicalEntry, AuditLog, Job, Payment, Notification, now
 from app.seed import seed
 from app.payments import apply_payment
-from conftest import migrate, SECRET, FakePayments
+from conftest import migrate, SECRET, FakePayments, deliver_emails, link_token
 
 pytestmark = pytest.mark.skipif(not os.getenv("TEST_POSTGRES_URL"), reason="Requiere TEST_POSTGRES_URL; nunca usa la DB de desarrollo")
 
@@ -333,3 +333,26 @@ def test_postgres_clinical_migration_is_atomic_on_invalid_legacy_data(pg_clinica
         assert db.scalar(text('SELECT version_num FROM alembic_version')) == '0003'
         assert db.get(MedicalEntry, 'legacy-invalid').content == 'Conservar'
         assert db.scalar(text("SELECT count(*) FROM pg_trigger WHERE tgname = 'clinical_entry_references_v1'")) == 0
+
+
+def test_postgres_reset_link_has_only_one_winner(pg, tmp_path):
+    system = SimpleNamespace(database=pg.db, settings=pg.settings, client=pg.client)
+    assert pg.client.post("/api/auth/password/forgot", json={"email": "ana@example.com"}).status_code == 202
+    token = link_token(deliver_emails(system, tmp_path / "mailbox")[-1], "restablecer-contrasena")
+    passwords = ["Primera-clave-2026", "Segunda-clave-2026"]
+    def use(password):
+        return pg.client.post("/api/auth/password/reset", json={"token": token, "password": password})
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(use, passwords))
+    assert sorted(response.status_code for response in results) == [200, 400]
+    winner = passwords[[response.status_code for response in results].index(200)]
+    assert pg.client.post("/api/auth/login", json={"email": "ana@example.com", "password": winner}).status_code == 200
+
+
+def test_postgres_forgot_password_limit_holds_under_concurrency(pg):
+    def request(_):
+        return pg.client.post("/api/auth/password/forgot", json={"email": "ana@example.com"}).status_code
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        assert set(executor.map(request, range(6))) == {202}
+    with pg.db.transaction() as db:
+        assert db.scalar(select(func.count()).select_from(Notification).where(Notification.template == "password_reset")) == 3

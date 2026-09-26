@@ -8,6 +8,11 @@ class Input(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+def check_password(password, email):
+    if str(email).lower() in password.lower():
+        raise ValueError("La contraseña no puede contener tu email")
+
+
 class Register(Input):
     email: EmailStr
     password: StrictStr = Field(min_length=8, max_length=128)
@@ -21,12 +26,25 @@ class Register(Input):
     def license_required(self):
         if self.role == "DOCTOR" and not (self.licenseNumber or "").strip():
             raise ValueError("La matrícula es obligatoria")
+        check_password(self.password, self.email)
         return self
 
 
 class Login(Input):
     email: EmailStr
     password: StrictStr = Field(max_length=128)
+
+
+class EmailOnly(Input):
+    email: EmailStr
+
+
+class AccountLink(Input):
+    token: StrictStr = Field(min_length=32, max_length=128)
+
+
+class PasswordReset(AccountLink):
+    password: StrictStr = Field(min_length=8, max_length=128)
 
 
 class Refresh(Input):

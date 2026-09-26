@@ -30,7 +30,7 @@ def test_seed_is_persistent_and_does_not_overwrite_edits(tmp_path):
     database.engine.dispose()
 
 def test_seed_rejects_production_before_writing(system):
-    settings = replace(system.settings, environment="production", database_url="postgresql://unused", web_url="https://example.com", api_url="https://api.example.com")
+    settings = replace(system.settings, environment="production", database_url="postgresql://unused", web_url="https://example.com", api_url="https://api.example.com", resend_api_key="re_test", email_from="MiTurno <no-reply@example.com>", mailbox_dir="")
     with pytest.raises(ValueError, match="producción"):
         seed(system.database, settings)
     with system.database.transaction() as db:

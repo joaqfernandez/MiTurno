@@ -28,7 +28,7 @@ def seed(database, settings):
             ("pedro@example.com", "Pedro", "Gómez", "DOCTOR"),
             ("admin@example.com", "", "", "ADMIN"),
         ]:
-            user = User(email=email, passwordHash=passwords.hash(PASSWORD), roles=[role], status="ACTIVE", phone="+5492615550100")
+            user = User(email=email, passwordHash=passwords.hash(PASSWORD), roles=[role], status="ACTIVE", phone="+5492615550100", emailVerifiedAt=now())
             db.add(user)
             db.flush()
             if role == "ADMIN":

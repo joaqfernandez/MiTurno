@@ -6,16 +6,27 @@ from app.models import User, Patient, Doctor, Schedule, ScheduleOverride, Appoin
 from app.appointments import expire_holds
 from app.payments import apply_payment
 from app.worker import run_one
-from conftest import future_slots, reserve, PASSWORD
+from conftest import future_slots, reserve, deliver_emails, link_token, PASSWORD
 
 
-def test_registration_login_refresh_logout(system):
+def verify_latest(system, tmp_path, email):
+    sent = [item for item in deliver_emails(system, tmp_path / "mailbox") if item.to == email]
+    token = link_token(sent[-1], "verificar-email")
+    assert system.client.post("/api/auth/email/verify", json={"token": token}).status_code == 200
+
+
+def test_registration_login_refresh_logout(system, tmp_path):
     payload = {"email": "new@example.com", "password": PASSWORD, "firstName": "Nuevo", "lastName": "Paciente", "role": "PATIENT", "phone": "+5492611234567"}
     response = system.client.post("/api/auth/register", json=payload)
-    assert response.status_code == 201, response.text
-    auth = response.json()
+    assert response.status_code == 202, response.text
+    # El registro ya no entrega sesión: primero hay que confirmar el email.
+    assert "accessToken" not in response.json()
+    assert system.client.post("/api/auth/login", json={"email": payload["email"], "password": PASSWORD}).status_code == 403
+    verify_latest(system, tmp_path, payload["email"])
+    login = system.client.post("/api/auth/login", json={"email": payload["email"], "password": PASSWORD})
+    assert login.status_code == 200
+    auth = login.json()
     assert auth["user"]["roles"] == ["PATIENT"]
-    assert system.client.post("/api/auth/login", json={"email": payload["email"], "password": PASSWORD}).status_code == 200
     refreshed = system.client.post("/api/auth/refresh", json={"refreshToken": auth["refreshToken"]})
     assert refreshed.status_code == 200
     assert refreshed.json()["refreshToken"] != auth["refreshToken"]
@@ -24,13 +35,16 @@ def test_registration_login_refresh_logout(system):
     assert system.client.post("/api/auth/refresh", json={"refreshToken": refreshed.json()["refreshToken"]}).status_code == 401
 
 
-def test_doctor_requires_verification(system):
+def test_doctor_requires_verification(system, tmp_path):
     payload = {"email": "newdoctor@example.com", "password": PASSWORD, "firstName": "Nuevo", "lastName": "Médico", "role": "DOCTOR", "licenseNumber": "ABC"}
     response = system.client.post("/api/auth/register", json=payload)
-    assert response.status_code == 201
-    assert response.json()["accessToken"] is None
-    uid = response.json()["user"]["id"]
+    assert response.status_code == 202
+    assert "accessToken" not in response.json()
+    verify_latest(system, tmp_path, payload["email"])
+    # Email confirmado no alcanza: el médico sigue esperando la aprobación del administrador.
     assert system.client.post("/api/auth/login", json={"email": payload["email"], "password": PASSWORD}).status_code == 403
+    with system.database.transaction() as db:
+        uid = db.scalar(select(User.id).where(User.email == payload["email"]))
     assert system.client.patch(f"/api/admin/users/{uid}/status", json={"status": "ACTIVE"}, headers=system.headers()).status_code == 403
     assert system.client.patch(f"/api/admin/users/{uid}/status", json={"status": "ACTIVE"}, headers=system.headers("admin")).status_code == 200
     assert system.client.post("/api/auth/login", json={"email": payload["email"], "password": PASSWORD}).status_code == 200

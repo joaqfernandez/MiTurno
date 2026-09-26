@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import re
 from types import SimpleNamespace
 import secrets
 import pytest
@@ -12,6 +13,7 @@ from app.database import Database
 from app.main import create_app
 from app.models import User, Patient, Doctor, Specialty, Schedule
 from app.auth import passwords, issue_tokens
+from app.worker import run_one
 
 SECRET = "test-only-secret-with-at-least-64-bytes-for-all-tested-hmac-algorithms"
 PASSWORD = "Test-password123"
@@ -61,7 +63,7 @@ def system(tmp_path, password_hash):
         specialty = Specialty(id="specialty", name="Clínica", slug="clinica")
         db.add(specialty)
         for name, role in [("own", "PATIENT"), ("other", "PATIENT"), ("doctor", "DOCTOR"), ("admin", "ADMIN")]:
-            db.add(User(id=f"user-{name}", email=f"{name}@example.com", passwordHash=password_hash, roles=[role], status="ACTIVE"))
+            db.add(User(id=f"user-{name}", email=f"{name}@example.com", passwordHash=password_hash, roles=[role], status="ACTIVE", emailVerifiedAt=datetime.now(timezone.utc)))
         db.flush()
         db.add_all([
             Patient(id="patient-own", userId="user-own", firstName="Ana", lastName="Castro", documentId="12345678", birthDate=datetime(1990, 1, 1, tzinfo=timezone.utc), healthInsurance="Original", insuranceNumber="ABC"),
@@ -89,3 +91,23 @@ def future_slots(system):
 
 def reserve(system, name="own", start=None):
     return system.client.post("/api/appointments", headers=system.headers(name), json={"doctorId": "doctor", "startAt": start or future_slots(system)[0]["startAt"]})
+
+
+def deliver_emails(system, directory):
+    """Procesa la cola con el buzón local de desarrollo y devuelve los emails entregados, del más viejo al más nuevo."""
+    system.settings.mailbox_dir = str(directory)
+    state = system.client.app.state
+    while run_one(system.database, system.settings, state.payment_provider, state.calendar_provider):
+        pass
+    emails = []
+    for path in sorted(Path(directory).glob("*.txt"), key=lambda item: item.stat().st_mtime_ns):
+        head, _, body = path.read_text(encoding="utf-8").partition("\n\n")
+        to, subject = (line.split(": ", 1)[1] for line in head.splitlines())
+        emails.append(SimpleNamespace(to=to, subject=subject, body=body))
+    return emails
+
+
+def link_token(email, page):
+    match = re.search(rf"/{page}#token=([A-Za-z0-9_-]+)", email.body)
+    assert match, email.body
+    return match.group(1)
