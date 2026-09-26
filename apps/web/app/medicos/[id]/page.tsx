@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { addDays, addWeeks, format, startOfDay, startOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -227,7 +227,8 @@ function WeeklyAvailability({
   );
 }
 
-export default function DoctorDetailPage({ params }: { params: { id: string } }) {
+export default function DoctorDetailPage() {
+  const params = useParams<{ id: string }>();
   const { data: doctor, isLoading, isError } = useDoctor(params.id);
   const { data: slots, isLoading: loadingSlots } = useAvailability(params.id);
   const { session } = useAuth();

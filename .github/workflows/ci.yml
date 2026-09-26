@@ -54,6 +54,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:web
+      # next-env.d.ts no se versiona (Next 16 lo reescribe en cada ejecución); se genera antes de revisar tipos.
+      - run: npx next typegen
+        working-directory: apps/web
       - run: npx tsc --noEmit --incremental false -p tsconfig.json
         working-directory: apps/web
       - run: npm run build:web

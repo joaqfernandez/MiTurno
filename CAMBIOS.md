@@ -6,6 +6,7 @@ Formato: `AAAA-MM-DD HH:MM (hora Argentina) · quién · qué cambió, muy resum
 
 ---
 
+- 2026-09-25 22:29 · Claude Code · Actualiza Next.js 14 → 16 y React 18 → 19 (vulnerabilidad crítica); `npm audit` en 0, `next-env.d.ts` fuera del repo y generado en el CI · rama `deps/actualiza-nextjs`
 - 2026-09-22 22:45 · Claude Code · Agrega `docs/BETA.md`: checklist por fases para la beta cerrada (legal, seguridad, hosting, producto) · rama `docs/checklist-beta`
 - 2026-09-22 22:20 · Claude Code · CI sin checks duplicados: los tres jobs corren una vez por PR y al mezclar en `main` · rama `ci/sin-checks-duplicados`
 - 2026-09-22 21:45 · Claude Code · Tests de hallazgos sin cobertura (`test_hallazgos.py`, `test_config.py`), corrige validación de `APP_ENV` y `ENCRYPTION_KEY` (D10) y agrega `docs/COBERTURA_HALLAZGOS.md` · rama `tests/cobertura-hallazgos`
