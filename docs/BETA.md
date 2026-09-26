@@ -21,7 +21,7 @@ Los datos de salud son datos sensibles (Ley 25.326) y la historia clínica tiene
 
 ## Fase 1 — Seguridad del código
 
-- [ ] **Actualizar Next.js.** `npm audit --omit=dev` (2026-09-22): 1 crítica (`next`), 2 altas (`postcss`, `nanoid`). Salto de versión mayor: hacerlo en rama propia con CI completo en verde.
+- [x] **Actualizar Next.js.** `npm audit --omit=dev` (2026-09-22): 1 crítica (`next`), 2 altas (`postcss`, `nanoid`). Resuelto el 2026-09-25: Next 16.3.6 y React 19.3; `npm audit` sin vulnerabilidades. Rama `deps/actualiza-nextjs`.
 - [ ] **Recuperar contraseña** por email con token de un solo uso y expiración. Hoy no existe.
 - [ ] **Verificación de email** al registrarse. Hoy no existe.
 - [ ] Revisar que logs y errores no incluyan datos personales ni clínicos.

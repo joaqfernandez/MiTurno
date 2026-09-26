@@ -14,3 +14,4 @@ playwright-report/
 .next-e2e/
 .claude/skills/
 .claude/settings.local.json
+apps/web/next-env.d.ts

@@ -34,7 +34,7 @@ Las marcas indican implementación local verificada; las integraciones externas 
 
 Checklist detallado y ordenado para la beta: [BETA.md](BETA.md).
 
-- [ ] Resolver avisos de seguridad de Next.js y dependencias web.
+- [x] Resolver avisos de seguridad de Next.js y dependencias web (Next 16 y React 19, 2026-09-25).
 - [ ] Monitoreo y logs estructurados sin datos sensibles.
 - [ ] Rate limiting compartido para varias réplicas.
 - [ ] Backups automáticos y prueba de restauración.

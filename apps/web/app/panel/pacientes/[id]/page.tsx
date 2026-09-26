@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -47,7 +48,8 @@ function EntryCard({ entry, all }: { entry: MedicalRecordEntry; all: MedicalReco
   );
 }
 
-export default function PatientRecordPage({ params }: { params: { id: string } }) {
+export default function PatientRecordPage() {
+  const params = useParams<{ id: string }>();
   const { session } = useAuth();
   const { data: patients } = useMyPatients();
   const { data: record, isLoading, error } = useMedicalRecord(params.id);
