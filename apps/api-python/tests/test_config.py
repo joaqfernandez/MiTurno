@@ -4,7 +4,8 @@ from app.config import Settings
 from conftest import SECRET
 
 PRODUCTION = dict(environment="production", database_url="postgresql://db/miturno", web_url="https://miturno.example",
-                  api_url="https://api.miturno.example", encryption_key="12" * 32)
+                  api_url="https://api.miturno.example", encryption_key="12" * 32,
+                  resend_api_key="re_test", email_from="MiTurno <no-reply@miturno.example>")
 
 
 def settings(**overrides):
@@ -43,6 +44,11 @@ def test_unknown_environment_is_rejected_when_loading_from_env(monkeypatch):
     ({"api_url": "http://api.miturno.example"}, "HTTPS"),
     ({"google_redirect_uri": "http://api.miturno.example/cb"}, "Google HTTPS"),
     ({"google_login_redirect_uri": "http://api.miturno.example/cb"}, "Google HTTPS"),
+    # Sin email nadie puede verificar su cuenta ni recuperar la contraseña.
+    ({"resend_api_key": ""}, "RESEND_API_KEY"),
+    ({"email_from": ""}, "EMAIL_FROM"),
+    # El buzón local de desarrollo nunca puede reemplazar el envío real.
+    ({"mailbox_dir": "/tmp/mailbox"}, "DEV_MAILBOX_DIR"),
 ])
 def test_production_requires_secure_infrastructure(change, message):
     with pytest.raises(ValueError, match=message):
@@ -53,3 +59,19 @@ def test_production_requires_secure_infrastructure(change, message):
 def test_production_requires_valid_encryption_key(key):
     with pytest.raises(ValueError, match="ENCRYPTION_KEY"):
         settings(**{**PRODUCTION, "encryption_key": key})
+
+
+
+def test_development_mailbox_defaults_only_outside_production(monkeypatch):
+    # Aislado del .env local: solo cuentan las variables definidas acá.
+    monkeypatch.setattr("app.config.load_dotenv", lambda *_args, **_kwargs: None)
+    for name in ("DEV_MAILBOX_DIR", "GOOGLE_LOGIN_REDIRECT_URI", "GOOGLE_REDIRECT_URI"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("JWT_ACCESS_SECRET", SECRET)
+    monkeypatch.setenv("APP_ENV", "development")
+    assert Settings.load().mailbox_dir.endswith("mailbox")
+    for name, key in {"DATABASE_URL": "database_url", "WEB_URL": "web_url", "API_URL": "api_url", "ENCRYPTION_KEY": "encryption_key",
+                      "RESEND_API_KEY": "resend_api_key", "EMAIL_FROM": "email_from"}.items():
+        monkeypatch.setenv(name, PRODUCTION[key])
+    monkeypatch.setenv("APP_ENV", "production")
+    assert Settings.load().mailbox_dir == ""

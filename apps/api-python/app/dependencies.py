@@ -30,7 +30,7 @@ def current_user(request: Request, credentials: HTTPAuthorizationCredentials | N
         raise HTTPException(401, "Sesión inválida o vencida") from None
     if user is None:
         raise HTTPException(401, "Sesión inválida")
-    if user.status != "ACTIVE":
+    if user.status != "ACTIVE" or user.emailVerifiedAt is None:
         raise HTTPException(403, "La cuenta no está activa", headers={"X-Session-Invalid": "1"})
     if type(claims.get("sv")) is not int or claims["sv"] != user.sessionVersion:
         raise HTTPException(401, "Sesión revocada", headers={"X-Session-Invalid": "1"})

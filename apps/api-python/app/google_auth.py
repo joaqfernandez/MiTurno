@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import EmailStr, TypeAdapter, ValidationError
 from sqlalchemy import select, delete, update, func
 from sqlalchemy.exc import IntegrityError
-from .auth import digest, issue_tokens
+from .auth import can_sign_in, digest, issue_tokens
 from .dependencies import current_user, session
 from .models import OAuthRequest, User, Patient, now
 
@@ -102,7 +102,8 @@ def resolve_user(db, claims, link_id):
         return existing
     if link_id:
         raise HTTPException(409, "Elegí el mismo email de tu cuenta")
-    user = User(email=claims["email"], googleSubject=claims["sub"], roles=["PATIENT"], status="ACTIVE")
+    # Google solo entrega emails verificados (exchange exige email_verified).
+    user = User(email=claims["email"], googleSubject=claims["sub"], roles=["PATIENT"], status="ACTIVE", emailVerifiedAt=now())
     db.add(user)
     db.flush()
     first = claims.get("given_name") or claims.get("name") or "Paciente"
@@ -169,7 +170,7 @@ def complete(request: Request, db=Depends(session)):
         raw = request.cookies.get("miturno_oauth_session")
         pending = consume_request(db, "session", raw, raw)
         user = db.scalar(select(User).where(User.id == pending.userId).with_for_update())
-        if user is None or user.status != "ACTIVE" or pending.sessionVersion != user.sessionVersion:
+        if user is None or not can_sign_in(user) or pending.sessionVersion != user.sessionVersion:
             return response
         response = JSONResponse(issue_tokens(db, user, settings))
         response.delete_cookie("miturno_oauth_session", path=COOKIE_PATH)

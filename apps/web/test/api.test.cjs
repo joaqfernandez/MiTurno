@@ -132,3 +132,10 @@ test('suspension on the retry after refresh also clears the renewed session', as
   assert.equal(localStorage.getItem('accessToken'), null);
   assert.equal(localStorage.getItem('refreshToken'), null);
 });
+
+test('API error codes reach the screen so it can offer the right action', async () => {
+  global.fetch = async () => new Response(JSON.stringify({ message: 'Confirmá tu email para ingresar.', code: 'EMAIL_NOT_VERIFIED' }), { status: 403 });
+  await assert.rejects(api.api('/auth/login', { method: 'POST' }), error => error.status === 403 && error.code === 'EMAIL_NOT_VERIFIED' && /Confirmá/.test(error.message));
+  global.fetch = async () => new Response(JSON.stringify({ message: 'Credenciales inválidas' }), { status: 401 });
+  await assert.rejects(api.api('/auth/login', { method: 'POST' }), error => error.status === 401 && error.code === undefined);
+});

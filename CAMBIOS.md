@@ -6,6 +6,8 @@ Formato: `AAAA-MM-DD HH:MM (hora Argentina) · quién · qué cambió, muy resum
 
 ---
 
+- 2026-09-26 00:12 · Claude Code · Web: pantallas de recuperar contraseña, nueva contraseña y confirmar email; registro sin sesión hasta confirmar; recorridos Playwright; límite de `/api/auth` configurable solo para e2e y con test · rama `feature/recuperar-contrasena-verificar-email`
+- 2026-09-26 00:05 · Claude Code · API: recuperar contraseña y verificar email con links de un solo uso (migración 0005), registro y login sin revelar cuentas, buzón local de desarrollo · rama `feature/recuperar-contrasena-verificar-email`
 - 2026-09-25 22:29 · Claude Code · Actualiza Next.js 14 → 16 y React 18 → 19 (vulnerabilidad crítica); `npm audit` en 0, `next-env.d.ts` fuera del repo y generado en el CI · rama `deps/actualiza-nextjs`
 - 2026-09-22 22:45 · Claude Code · Agrega `docs/BETA.md`: checklist por fases para la beta cerrada (legal, seguridad, hosting, producto) · rama `docs/checklist-beta`
 - 2026-09-22 22:20 · Claude Code · CI sin checks duplicados: los tres jobs corren una vez por PR y al mezclar en `main` · rama `ci/sin-checks-duplicados`

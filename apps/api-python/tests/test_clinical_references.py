@@ -11,7 +11,7 @@ from app.models import User, Doctor, Appointment, MedicalRecord, MedicalEntry, A
 def clinical(system, password_hash):
     with system.database.transaction() as db:
         db.add(User(id='user-colleague', email='colleague@example.com', passwordHash=password_hash,
-                    roles=['DOCTOR'], status='ACTIVE'))
+                    roles=['DOCTOR'], status='ACTIVE', emailVerifiedAt=now()))
         db.flush()
         db.add(Doctor(id='colleague', userId='user-colleague', firstName='Pedro', lastName='Prueba',
                       licenseNumber='COLLEAGUE', icsFeedToken='colleague-feed'))
@@ -281,11 +281,13 @@ def test_sqlite_rowid_replace_cannot_delete_original_even_without_recursive_trig
 
 
 def test_reader_never_embeds_an_amendment_from_another_history(clinical):
-    from alembic import command
+    from app.clinical_integrity_v1 import uninstall
     original = entry(clinical).json()
     other = entry(clinical, patientId='patient-other').json()
     # Simula un dato histórico previo a los guards, sin desactivar la autorización.
-    command.downgrade(migration_config(clinical), '0003')
+    # Equivale al downgrade de 0004 sin revertir migraciones posteriores que la app necesita.
+    with clinical.database.engine.begin() as connection:
+        uninstall(connection)
     with clinical.database.transaction() as db:
         db.add(MedicalEntry(id='legacy-cross-record', recordId=other['recordId'], doctorId='doctor',
             amendsEntryId=original['id'], title='Nota de otro paciente', content='No debe aparecer'))

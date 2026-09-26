@@ -21,6 +21,17 @@ PostgreSQL impide solapamientos de turnos activos mediante una exclusión por in
 
 Los envíos requieren Resend (`EMAIL_FROM` verificado) o Twilio. Los trabajos sin configuración se reintentan y finalmente quedan FAILED; el administrador puede reintentarlos cuando configure el proveedor. El seed no envía correos ni realiza cobros.
 
+**Emails en desarrollo:** sin Resend, el worker escribe cada email en `.data/mailbox/` (un `.txt` por email, con el link). Es una entrega real a una carpeta, no una simulación, y `config.py` la prohíbe en producción, donde `RESEND_API_KEY` y `EMAIL_FROM` son obligatorias.
+
+**Cuentas (`app/account.py`):** verificación de email y recuperación de contraseña con links de un solo uso. Resumen de las defensas (cada una tiene su test en `tests/test_account.py`):
+
+- En la base solo queda el SHA-256 del token; el token lo genera el worker al enviar y viaja en el fragmento `#` del link.
+- Vencen a los 30 minutos (contraseña) o 24 horas (email), sirven una vez, un link nuevo anula el anterior y cambiar la contraseña o suspender la cuenta los anula.
+- Registro, "olvidé mi contraseña" y reenvío responden igual exista o no la cuenta; el login verifica contra un hash señuelo si la cuenta no existe.
+- Máximo 3 emails por hora por cuenta y tipo, además del límite por IP de `/api/auth`.
+- Restablecer cierra todas las sesiones, queda en auditoría y avisa por email. No reactiva ni aprueba cuentas.
+- Sin email confirmado no hay sesión. Las cuentas previas a la migración 0005 quedan confirmadas.
+
 ## Pruebas
 
 Desde esta carpeta: `.venv/bin/python -m pytest`. Las pruebas de PostgreSQL se omiten salvo que exista `TEST_POSTGRES_URL` (ver README raíz). Adaptadores externos se prueban con transportes HTTP controlados: no son evidencia de una operación real en las cuentas de los proveedores.

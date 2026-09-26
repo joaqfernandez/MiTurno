@@ -36,7 +36,19 @@ class User(Entity, Base):
     roles: Mapped[list] = mapped_column(JSON, default=lambda: ["PATIENT"])
     status: Mapped[str] = mapped_column(String(32), default="ACTIVE")
     sessionVersion: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    emailVerifiedAt: Mapped[datetime | None] = mapped_column(UTCDateTime)
     updatedAt: Mapped[datetime] = mapped_column(UTCDateTime, default=now, onupdate=now)
+
+
+class AccountToken(Entity, Base):
+    """Links de un solo uso enviados por email. Solo se guarda el hash del token."""
+    __tablename__ = "account_tokens"
+    userId: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    purpose: Mapped[str] = mapped_column(String(32))
+    tokenHash: Mapped[str] = mapped_column(String(64), unique=True)
+    sessionVersion: Mapped[int] = mapped_column(Integer)
+    expiresAt: Mapped[datetime] = mapped_column(UTCDateTime)
+    usedAt: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class RefreshToken(Entity, Base):

@@ -24,6 +24,7 @@ function RegisterForm() {
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [registered, setRegistered] = useState<string | null>(null);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -35,18 +36,17 @@ function RegisterForm() {
       setError('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
+    if (form.email.trim() && form.password.toLowerCase().includes(form.email.trim().toLowerCase())) {
+      setError('La contraseña no puede contener tu email.');
+      return;
+    }
     if (role === 'PATIENT' && form.phone.trim() === '') {
       setError('Ingresá un teléfono de contacto: tu médico lo va a usar si necesita comunicarse con vos.');
       return;
     }
     setLoading(true);
     try {
-      const session = await register({ ...form, role });
-      if (!session) {
-        setError('Cuenta de médico creada. Un administrador debe verificar tu matrícula antes de que ingreses.');
-        return;
-      }
-      router.push(session.role === 'DOCTOR' ? '/panel' : '/medicos');
+      setRegistered(await register({ ...form, role }));
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No pudimos crear la cuenta.');
     } finally {
@@ -69,6 +69,19 @@ function RegisterForm() {
         </Link>
       </p>
 
+      {registered ? (
+        <Card className="mt-8 p-6">
+          <div role="status" className="flex flex-col gap-3 text-sm text-slate-700">
+            <p className="font-medium text-slate-900">Revisá tu correo</p>
+            <p>{registered}</p>
+            <p className="text-slate-500">El link vence en 24 horas. Si no llega, revisá la carpeta de spam o pedí otro al ingresar.</p>
+            {role === 'DOCTOR' && (
+              <p className="text-slate-500">Después de confirmar el email, un administrador verifica tu matrícula antes de habilitar tu cuenta.</p>
+            )}
+            <Link href="/login" className="font-medium text-brand-600 hover:text-brand-700">Ir a ingresar</Link>
+          </div>
+        </Card>
+      ) : (
       <Card className="mt-8 p-6">
         <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
           <fieldset>
@@ -167,6 +180,7 @@ function RegisterForm() {
           </button>
         </form>
       </Card>
+      )}
     </main>
   );
 }
