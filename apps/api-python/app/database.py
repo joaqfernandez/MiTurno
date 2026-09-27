@@ -15,7 +15,8 @@ class Database:
             url = url.replace("postgresql://", "postgresql+psycopg://", 1)
         if url.startswith("sqlite:///"):
             Path(url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
-        self.engine = create_engine(url, pool_pre_ping=True, connect_args={"check_same_thread": False, "timeout": 30} if url.startswith("sqlite") else {})
+        # hide_parameters: los errores de SQLAlchemy no copian valores (DNI, texto clínico) en mensajes ni logs.
+        self.engine = create_engine(url, pool_pre_ping=True, hide_parameters=True, connect_args={"check_same_thread": False, "timeout": 30} if url.startswith("sqlite") else {})
         if self.engine.dialect.name == "sqlite":
             @event.listens_for(self.engine, "connect")
             def configure(connection, _):

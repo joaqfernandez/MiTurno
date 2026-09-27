@@ -3,6 +3,7 @@ from collections import OrderedDict, deque
 from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
+import re
 from threading import Lock
 import time
 import httpx
@@ -19,6 +20,26 @@ from .calendar import GoogleCalendar
 from . import auth, patients, doctors, appointments, medical_records, payments, calendar, admin, google_auth
 
 logger = logging.getLogger("miturno.api")
+ICS_FEED = re.compile(r"(/api/calendar/feed/)[^/]+(\.ics)$")
+
+
+def redact_path(path):
+    """Ruta apta para logs: sin query (códigos y state de OAuth) ni el token secreto del feed ICS."""
+    return ICS_FEED.sub(r"\1***\2", path.split("?", 1)[0])
+
+
+class RedactAccessLog(logging.Filter):
+    # uvicorn.access registra (cliente, método, ruta con query, versión HTTP, status).
+    def filter(self, record):
+        if isinstance(record.args, tuple) and len(record.args) == 5:
+            client, method, path, version, status = record.args
+            record.args = (client, method, redact_path(str(path)), version, status)
+        return True
+
+
+access_logger = logging.getLogger("uvicorn.access")
+if not any(isinstance(item, RedactAccessLog) for item in access_logger.filters):
+    access_logger.addFilter(RedactAccessLog())
 
 def create_app(database_path: Path | None = None, secret: str | None = None, *, settings: Settings | None = None, payment_provider=None, calendar_provider=None, login_provider=None):
     settings = settings or (Settings(f"sqlite:///{database_path}", secret) if database_path is not None and secret else Settings.load())
