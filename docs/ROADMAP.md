@@ -40,6 +40,12 @@ Checklist detallado y ordenado para la beta: [BETA.md](BETA.md).
 - [ ] Backups automáticos y prueba de restauración.
 - [ ] Pruebas de carga, recuperación del worker y proveedores reales.
 - [ ] Consentimiento, términos y requisitos de tratamiento de datos de salud.
-- [ ] Completar controles UI de excepciones de agenda y zonas horarias.
+- [x] Pantalla de excepciones de agenda (días libres y vacaciones, 2026-09-27). Franjas extra solo por API.
+- [ ] Revisar zonas horarias en la UI.
 
 Login Google está implementado y requiere validación con credenciales reales. No está implementada la gestión integral de clínicas. Las sedes de atención sí tienen modelo/API, pero eso no equivale a administrar una clínica multiusuario.
+
+## Ideas para más adelante (sin decidir)
+
+- **Link propio de cada médico** (propuesto el 2026-09-27): una dirección corta como `miturnosapp.com/hernanpasarela` que el médico comparte con sus pacientes y abre directamente su agenda. Antes de hacerlo, el fundador tiene que decidir: si el médico también aparece en el buscador público o solo por link (en ese caso, fuera de Google); quién elige el nombre (automático editable o aprobado por el administrador); y si un link viejo sigue funcionando cuando el médico cambia el nombre (recomendado: sí). Requiere nombres reservados (`login`, `admin`, `panel`, `api`, etc.).
+- **Marca «MiTurnos» en plural** (propuesto el 2026-09-27) para coincidir con el dominio `miturnosapp.com`. En el código son unas 30 menciones visibles; los nombres técnicos internos no se cambian. Antes: buscar la marca en el INPI y conviene hacerlo antes de la beta.

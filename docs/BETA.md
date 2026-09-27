@@ -52,7 +52,7 @@ Hoy no hay ningún archivo de despliegue en el repositorio. Hay que correr cuatr
 
 ## Fase 3 — Producto mínimo para médicos
 
-- [ ] Pantalla de **excepciones de agenda** (vacaciones, días libres). Roadmap: incompleta.
+- [x] Pantalla de **excepciones de agenda** (vacaciones, días libres). Hecho el 2026-09-27, rama `feature/excepciones-agenda`: `/panel/dias-libres`, rangos de fechas, días completos u horas. Si hay turnos activos en esas fechas no se bloquea: se listan y el médico los cancela desde la misma pantalla (decisión del fundador; nada se cancela automáticamente). Las franjas extra (EXTRA) siguen solo por API.
 - [ ] Revisar zonas horarias en la UI.
 - [ ] **Login con Google** validado con credenciales reales en staging.
 - [ ] Canal de feedback visible para los médicos (formulario o contacto directo).

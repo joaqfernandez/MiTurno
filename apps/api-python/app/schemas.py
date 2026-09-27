@@ -102,6 +102,7 @@ class ScheduleInput(Input):
 class OverrideInput(Input):
     type: Literal["BLOCKED", "EXTRA"]
     date: date
+    endDate: date | None = None
     startTime: StrictStr | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
     endTime: StrictStr | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
     reason: StrictStr | None = Field(default=None, max_length=500)
@@ -112,6 +113,11 @@ class OverrideInput(Input):
             raise ValueError("Horas inválidas")
         if self.type == "EXTRA" and not self.startTime:
             raise ValueError("La franja EXTRA requiere horas")
+        self.endDate = self.endDate or self.date
+        if self.endDate < self.date:
+            raise ValueError("La fecha de fin no puede ser anterior a la de inicio")
+        if (self.endDate - self.date).days > 365:
+            raise ValueError("Una excepción puede abarcar hasta un año")
         return self
 
 

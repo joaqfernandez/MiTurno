@@ -1,9 +1,14 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from sqlalchemy import delete, select, or_
 from .dependencies import session, doctor_user
 from .models import Doctor, User, Specialty, Schedule, ScheduleOverride, Location
 from .schemas import DoctorSettings, ScheduleInput, OverrideInput, LocationsInput, PhotoInput
-from .serializers import doctor as serialize, row
+from .availability import blocked_appointments
+from .serializers import appointment as serialize_appointment, doctor as serialize, row
 
 router = APIRouter(prefix="/api", tags=["Médicos"])
 
@@ -81,14 +86,33 @@ def save_schedule_by_id(doctor_id: str, body: ScheduleInput, user=Depends(doctor
     return save_schedule(body, user, db)
 
 
+def local_today(doctor):
+    return datetime.now(ZoneInfo(doctor.timezone)).date()
+
+
 @router.get("/doctors/me/overrides")
 def overrides(user=Depends(doctor_user), db=Depends(session)):
-    return [row(item) for item in db.scalars(select(ScheduleOverride).where(ScheduleOverride.doctorId == user.doctor.id))]
+    # Solo vigentes y futuras: las pasadas ya no afectan la agenda.
+    return [row(item) for item in db.scalars(select(ScheduleOverride).where(
+        ScheduleOverride.doctorId == user.doctor.id, ScheduleOverride.endDate >= local_today(user.doctor),
+    ).order_by(ScheduleOverride.date, ScheduleOverride.startTime))]
 
 
 @router.post("/doctors/me/overrides", status_code=201)
 def create_override(body: OverrideInput, user=Depends(doctor_user), db=Depends(session)):
-    db.scalar(select(Doctor).where(Doctor.id == user.doctor.id).with_for_update())
+    # Mismo candado que las reservas: ningún turno puede entrar entre este control y el alta del bloqueo.
+    doctor = db.scalar(select(Doctor).where(Doctor.id == user.doctor.id).with_for_update())
+    if body.endDate < local_today(doctor):
+        raise HTTPException(400, "Las fechas ya pasaron")
+    if body.type == "BLOCKED":
+        conflicts = blocked_appointments(db, doctor, body)
+        if conflicts:
+            # No se cancela nada automáticamente: el médico decide qué hacer con cada turno.
+            return JSONResponse(status_code=409, content=jsonable_encoder({
+                "message": f"Tenés {len(conflicts)} {'turno' if len(conflicts) == 1 else 'turnos'} en esas fechas. Cancelalos desde tu agenda antes de bloquearlas.",
+                "code": "APPOINTMENTS_IN_RANGE",
+                "appointments": [serialize_appointment(db, item) for item in conflicts],
+            }))
     item = ScheduleOverride(doctorId=user.doctor.id, **body.model_dump())
     db.add(item)
     db.flush()

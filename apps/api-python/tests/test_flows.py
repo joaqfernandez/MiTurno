@@ -108,6 +108,8 @@ def test_slot_duration_range_and_overrides(system):
     assert response.status_code == 201
     assert datetime.fromisoformat(response.json()["endAt"].replace("Z", "+00:00")) - start == timedelta(minutes=15)
     # Bloqueo DATE del mismo día consultado desde un instante posterior a medianoche.
+    # Un día con turnos activos no se puede bloquear (test_overrides.py): primero se libera.
+    assert system.client.delete(f"/api/appointments/{response.json()['id']}", headers=system.headers()).status_code == 200
     local_date = (start - timedelta(hours=3)).date().isoformat()
     assert system.client.post("/api/doctors/me/overrides", json={"type": "BLOCKED", "date": local_date}, headers=system.headers("doctor")).status_code == 201
     response = system.client.get("/api/appointments/availability/doctor", params={"from": start.isoformat(), "to": (start + timedelta(hours=4)).isoformat()})

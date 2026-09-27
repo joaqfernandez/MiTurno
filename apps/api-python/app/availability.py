@@ -1,5 +1,5 @@
 """Disponibilidad por zona horaria; nunca materializa millones de slots."""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -19,11 +19,11 @@ def slots(db, doctor, start, end, clock=None):
     zone = ZoneInfo(doctor.timezone)
     day, last = start.astimezone(zone).date(), end.astimezone(zone).date()
     schedules = list(db.scalars(select(Schedule).where(Schedule.doctorId == doctor.id)))
-    overrides = list(db.scalars(select(ScheduleOverride).where(ScheduleOverride.doctorId == doctor.id, ScheduleOverride.date >= day, ScheduleOverride.date <= last)))
+    overrides = list(db.scalars(select(ScheduleOverride).where(ScheduleOverride.doctorId == doctor.id, ScheduleOverride.endDate >= day, ScheduleOverride.date <= last)))
     occupied = list(db.scalars(select(Appointment).where(Appointment.doctorId == doctor.id, Appointment.status.in_(ACTIVE), Appointment.startAt < end, Appointment.endAt > start)))
     result = {}
     while day <= last:
-        exceptions = [item for item in overrides if item.date == day]
+        exceptions = [item for item in overrides if item.date <= day <= item.endDate]
         if any(item.type == "BLOCKED" and not item.startTime for item in exceptions):
             day += timedelta(days=1)
             continue
@@ -51,3 +51,25 @@ def slots(db, doctor, start, end, clock=None):
                 cursor = finish
         day += timedelta(days=1)
     return [result[key] for key in sorted(result)]
+
+
+def blocked_appointments(db, doctor, block):
+    """Turnos activos que quedarían dentro de un bloqueo (días completos o la franja horaria de cada día)."""
+    zone = ZoneInfo(doctor.timezone)
+    first = datetime.combine(block.date, time.min, zone)
+    after = datetime.combine(block.endDate + timedelta(days=1), time.min, zone)
+    items = db.scalars(select(Appointment).where(Appointment.doctorId == doctor.id, Appointment.status.in_(ACTIVE),
+                                                 Appointment.startAt < after, Appointment.endAt > first).order_by(Appointment.startAt))
+    if not block.startTime:
+        return list(items)
+
+    def overlaps(item):
+        start, end = item.startAt.astimezone(zone), item.endAt.astimezone(zone)
+        for day in {start.date(), end.date()}:
+            if block.date <= day <= block.endDate:
+                opens = datetime.combine(day, datetime.strptime(block.startTime, "%H:%M").time(), zone)
+                closes = datetime.combine(day, datetime.strptime(block.endTime, "%H:%M").time(), zone)
+                if start < closes and end > opens:
+                    return True
+        return False
+    return [item for item in items if overlaps(item)]

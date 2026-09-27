@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSaveSchedule, useSchedule } from '@/lib/queries';
 import { WEEKDAYS } from '@/lib/format';
@@ -137,8 +138,11 @@ export default function SchedulePage() {
           })}
 
           <p className="mt-2 text-sm text-slate-500">
-            ¿Vacaciones o un feriado? Los bloqueos puntuales por fecha se gestionan desde la API de excepciones
-            (ScheduleOverride) — la pantalla llega en la próxima iteración.
+            ¿Vacaciones o un feriado? Bloqueá esas fechas desde{' '}
+            <Link href="/panel/dias-libres" className="font-medium text-brand-600 hover:underline">
+              Días libres
+            </Link>
+            .
           </p>
         </div>
       )}

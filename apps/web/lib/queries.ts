@@ -15,6 +15,8 @@ import type {
   MedicalRecord,
   Patient,
   Slot,
+  NewScheduleOverride,
+  ScheduleOverride,
   Specialty,
   WeeklyBlock,
 } from './types';
@@ -213,6 +215,45 @@ export function useSaveSchedule() {
         () => demo.setDemoSchedule(blocks),
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
+  });
+}
+
+export function useOverrides() {
+  const { session, ready } = useAuth();
+  return useQuery({
+    enabled: ready && Boolean(session),
+    queryKey: ['overrides', session?.email],
+    queryFn: () =>
+      withFallback(
+        () => api<ScheduleOverride[]>('/doctors/me/overrides'),
+        () => demo.demoOverrides,
+      ),
+  });
+}
+
+export function useCreateOverride() {
+  const qc = useQueryClient();
+  return useMutation({
+    // La pantalla muestra el error junto al formulario (con los turnos en conflicto), no en el aviso general.
+    meta: { localError: true },
+    mutationFn: (item: NewScheduleOverride) =>
+      withFallback(
+        () => api<ScheduleOverride>('/doctors/me/overrides', { method: 'POST', body: JSON.stringify(item) }),
+        () => demo.addDemoOverride(item),
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['overrides'] }),
+  });
+}
+
+export function useDeleteOverride() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      withFallback(
+        () => api(`/doctors/me/overrides/${id}`, { method: 'DELETE' }),
+        () => demo.removeDemoOverride(id),
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['overrides'] }),
   });
 }
 
