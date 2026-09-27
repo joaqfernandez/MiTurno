@@ -6,6 +6,7 @@ Formato: `AAAA-MM-DD HH:MM (hora Argentina) · quién · qué cambió, muy resum
 
 ---
 
+- 2026-09-27 14:48 · Claude Code · API: un error inesperado responde 500 genérico con CORS y se registra sin su mensaje (solo tipo, ruta y líneas de código); dos tests de historia clínica verifican el 500 en vez de la excepción, con permiso del fundador · rama `seguridad/logs-sin-datos-sensibles`
 - 2026-09-27 14:41 · Claude Code · API: errores de SQLAlchemy sin valores de la consulta (`hide_parameters`) y log de acceso sin query ni token del feed ICS; `test_logs.py` · rama `seguridad/logs-sin-datos-sensibles`
 - 2026-09-26 00:12 · Claude Code · Web: pantallas de recuperar contraseña, nueva contraseña y confirmar email; registro sin sesión hasta confirmar; recorridos Playwright; límite de `/api/auth` configurable solo para e2e y con test · rama `feature/recuperar-contrasena-verificar-email`
 - 2026-09-26 00:05 · Claude Code · API: recuperar contraseña y verificar email con links de un solo uso (migración 0005), registro y login sin revelar cuentas, buzón local de desarrollo · rama `feature/recuperar-contrasena-verificar-email`

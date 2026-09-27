@@ -137,8 +137,8 @@ def test_audit_failure_rolls_back_new_record_and_entry(clinical, monkeypatch):
         raise RuntimeError('audit unavailable')
     monkeypatch.setattr('app.medical_records.audit', fail)
     before = counts(clinical)
-    with pytest.raises(RuntimeError, match='audit unavailable'):
-        entry(clinical, appointmentId='own-visit')
+    # La API responde 500 genérico (ver test_logs.py) y no deja nada escrito.
+    assert entry(clinical, appointmentId='own-visit').status_code == 500
     assert counts(clinical) == before
 
 

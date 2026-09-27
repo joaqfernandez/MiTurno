@@ -153,8 +153,7 @@ def test_medical_history_is_atomic_and_immutable(system, monkeypatch):
     def broken_audit(*args):
         raise RuntimeError("Audit unavailable")
     monkeypatch.setattr(medical_records, "audit", broken_audit)
-    with pytest.raises(RuntimeError):
-        system.client.post("/api/medical-records/entries", json=body, headers=system.headers("doctor"))
+    assert system.client.post("/api/medical-records/entries", json=body, headers=system.headers("doctor")).status_code == 500
     with system.database.transaction() as db:
         assert db.scalar(select(func.count()).select_from(MedicalEntry)) == 2
 

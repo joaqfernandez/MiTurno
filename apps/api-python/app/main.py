@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 from threading import Lock
 import time
+import traceback
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -61,6 +62,19 @@ def create_app(database_path: Path | None = None, secret: str | None = None, *, 
     app.state.database, app.state.settings = database, settings
     app.state.login_provider = login_google
     app.state.payment_provider, app.state.calendar_provider = provider, google
+
+    @app.middleware("http")
+    async def hide_unhandled_errors(request, call_next):
+        # Registrado antes que CORS para que el 500 llegue al navegador con sus cabeceras.
+        try:
+            return await call_next(request)
+        except Exception as error:
+            # El mensaje de una excepción puede traer datos del paciente (valores, texto clínico):
+            # solo tipo, ruta y líneas de código. uvicorn no llega a ver la excepción.
+            logger.error("unhandled_error type=%s method=%s path=%s\n%s", type(error).__name__, request.method,
+                         redact_path(request.url.path), "".join(traceback.format_tb(error.__traceback__)).rstrip())
+            return JSONResponse(status_code=500, content={"message": "Error interno; intentá nuevamente"})
+
     app.add_middleware(CORSMiddleware, allow_origins=[settings.web_url], allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"], expose_headers=["X-Session-Invalid"])
 
     attempts, mutex = OrderedDict(), Lock()

@@ -24,7 +24,7 @@ Los datos de salud son datos sensibles (Ley 25.326) y la historia clínica tiene
 - [x] **Actualizar Next.js.** `npm audit --omit=dev` (2026-09-22): 1 crítica (`next`), 2 altas (`postcss`, `nanoid`). Resuelto el 2026-09-25: Next 16.3.6 y React 19.3; `npm audit` sin vulnerabilidades. Rama `deps/actualiza-nextjs`.
 - [x] **Recuperar contraseña** por email con token de un solo uso y expiración. Hecho el 2026-09-26, rama `feature/recuperar-contrasena-verificar-email`; defensas y tests en `apps/api-python/README.md`.
 - [x] **Verificación de email** al registrarse. Mismo cambio: sin email confirmado no se puede ingresar. El envío real depende de «Email real con Resend» (Fase 2).
-- [ ] Revisar que logs y errores no incluyan datos personales ni clínicos. Revisado el 2026-09-27 (rama `seguridad/logs-sin-datos-sensibles`): errores de la base sin valores y log de acceso sin query ni token del feed ICS, con `test_logs.py`. **Falta:** que un error inesperado no se registre con su mensaje completo; requiere cambiar dos tests existentes y queda como decisión del fundador.
+- [x] Revisar que logs y errores no incluyan datos personales ni clínicos. Hecho el 2026-09-27, rama `seguridad/logs-sin-datos-sensibles`: errores de la base sin valores, log de acceso sin query ni token del feed ICS y errores inesperados registrados sin su mensaje (`test_logs.py`). El log de acceso conserva la IP (necesaria para seguridad): mencionarlo en la política de privacidad.
 
 ## Fase 2 — Infraestructura (staging primero)
 
