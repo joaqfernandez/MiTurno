@@ -14,6 +14,7 @@ Los datos de salud son datos sensibles (Ley 25.326) y la historia clínica tiene
 
 - [ ] Consulta con abogado especializado en datos personales y salud.
 - [ ] Términos y condiciones y política de privacidad (páginas en la web y aceptación al registrarse).
+  - La política de privacidad debe mencionar que los registros técnicos (logs) guardan la IP y la ruta de cada pedido, para seguridad y límite de solicitudes, sin datos clínicos. Definir con el abogado cuánto tiempo se conservan.
 - [ ] Consentimiento del paciente para el tratamiento de datos de salud.
 - [ ] Acuerdo con los médicos: quién es responsable de los datos y quién los trata.
 - [ ] Inscripción de la base de datos ante la AAIP.
@@ -24,7 +25,7 @@ Los datos de salud son datos sensibles (Ley 25.326) y la historia clínica tiene
 - [x] **Actualizar Next.js.** `npm audit --omit=dev` (2026-09-22): 1 crítica (`next`), 2 altas (`postcss`, `nanoid`). Resuelto el 2026-09-25: Next 16.3.6 y React 19.3; `npm audit` sin vulnerabilidades. Rama `deps/actualiza-nextjs`.
 - [x] **Recuperar contraseña** por email con token de un solo uso y expiración. Hecho el 2026-09-26, rama `feature/recuperar-contrasena-verificar-email`; defensas y tests en `apps/api-python/README.md`.
 - [x] **Verificación de email** al registrarse. Mismo cambio: sin email confirmado no se puede ingresar. El envío real depende de «Email real con Resend» (Fase 2).
-- [ ] Revisar que logs y errores no incluyan datos personales ni clínicos.
+- [x] Revisar que logs y errores no incluyan datos personales ni clínicos. Hecho el 2026-09-27, rama `seguridad/logs-sin-datos-sensibles`: errores de la base sin valores, log de acceso sin query ni token del feed ICS y errores inesperados registrados sin su mensaje (`test_logs.py`). El log de acceso conserva la IP (necesaria para seguridad): mencionarlo en la política de privacidad.
 
 ## Fase 2 — Infraestructura (staging primero)
 
