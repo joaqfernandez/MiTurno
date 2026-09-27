@@ -1,12 +1,13 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import delete, select, or_
 from .dependencies import session, doctor_user
-from .models import Doctor, User, Specialty, Schedule, ScheduleOverride, Location
-from .schemas import DoctorSettings, ScheduleInput, OverrideInput, LocationsInput, PhotoInput
+from . import doctor_links
+from .models import Doctor, DoctorLink, User, Specialty, Schedule, ScheduleOverride, Location
+from .schemas import DoctorSettings, DoctorLinkInput, ScheduleInput, OverrideInput, LocationsInput, PhotoInput
 from .availability import blocked_appointments
 from .serializers import appointment as serialize_appointment, doctor as serialize, row
 
@@ -47,6 +48,9 @@ def save_settings(body, user, db):
     db.scalar(select(Doctor).where(Doctor.id == user.doctor.id).with_for_update())
     for key, value in changes.items():
         setattr(user.doctor, key, value)
+    if "specialtyIds" in changes:
+        # Si el nombre solo estaba ocupado, con la especialidad puede haber un link libre.
+        doctor_links.assign_automatic(db, user.doctor)
     db.flush()
     return settings(user, db)
 
@@ -140,6 +144,33 @@ def save_locations(body: LocationsInput, user=Depends(doctor_user), db=Depends(s
         db.add(Location(doctorId=user.doctor.id, **item.model_dump(exclude={"id"})))
     db.flush()
     return locations(user, db)
+
+
+def link(request, doctor):
+    return {"slug": doctor.slug, "url": f"{request.app.state.settings.web_url}/{doctor.slug}" if doctor.slug else None}
+
+
+@router.get("/doctors/me/link")
+def my_link(request: Request, user=Depends(doctor_user)):
+    return link(request, user.doctor)
+
+
+@router.put("/doctors/me/link")
+def change_link(body: DoctorLinkInput, request: Request, user=Depends(doctor_user), db=Depends(session)):
+    doctor = db.scalar(select(Doctor).where(Doctor.id == user.doctor.id).with_for_update())
+    doctor_links.change(db, doctor, body.slug)
+    db.flush()
+    return link(request, doctor)
+
+
+@router.get("/doctors/by-link/{name}")
+def by_link(name: str, db=Depends(session)):
+    # Un nombre viejo también resuelve: la web redirige al actual (`slug`).
+    item = db.scalar(select(Doctor).join(DoctorLink, DoctorLink.doctorId == Doctor.id).join(User, User.id == Doctor.userId)
+                     .where(DoctorLink.name == name.lower(), User.status == "ACTIVE"))
+    if not item:
+        raise HTTPException(404, "Link no encontrado")
+    return serialize(db, item)
 
 
 @router.get("/doctors/me/photo")

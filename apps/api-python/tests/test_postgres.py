@@ -383,3 +383,19 @@ def test_postgres_booking_and_day_block_never_both_win(pg):
         booked = db.scalar(select(func.count()).select_from(Appointment).where(Appointment.doctorId == pg.doctor_id, Appointment.startAt == datetime.fromisoformat(chosen["startAt"].replace("Z", "+00:00"))))
         blocked = db.scalar(select(func.count()).select_from(ScheduleOverride).where(ScheduleOverride.doctorId == pg.doctor_id))
     assert (booked, blocked) in [(1, 0), (0, 1)]
+
+
+def test_postgres_two_doctors_cannot_claim_the_same_link(pg):
+    with pg.db.transaction() as db:
+        tokens = [issue_tokens(db, db.scalar(select(User).where(User.email == email)), pg.settings)["accessToken"]
+                  for email in ("valeria@example.com", "pedro@example.com")]
+
+    def claim(token):
+        return pg.client.put("/api/doctors/me/link", headers={"Authorization": "Bearer " + token}, json={"slug": "consultorio-centro"})
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        responses = list(executor.map(claim, tokens))
+    assert sorted(response.status_code for response in responses) == [200, 409]
+    with pg.db.transaction() as db:
+        assert db.scalar(select(func.count()).select_from(Doctor).where(Doctor.slug == "consultorio-centro")) == 1
+    assert "ya está en uso" in next(r for r in responses if r.status_code == 409).json()["detail"]

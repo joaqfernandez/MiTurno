@@ -6,6 +6,7 @@ from sqlalchemy import select
 from .auth import passwords
 from .config import Settings
 from .database import Database
+from .doctor_links import assign_automatic
 from .models import User, Patient, Doctor, Specialty, Schedule, Appointment, MedicalRecord, MedicalEntry, AuditLog, Location, now
 
 PASSWORD = "DemoTurnos2026!"
@@ -41,6 +42,8 @@ def seed(database, settings):
                                  bio="Perfil ficticio para probar el funcionamiento de MiTurno.", requiresDeposit=False)
             db.add(profile)
             db.flush()
+            if role == "DOCTOR":
+                assign_automatic(db, profile)
             profiles.append(profile)
             if role == "DOCTOR":
                 for day in range(1, 6):

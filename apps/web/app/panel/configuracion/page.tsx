@@ -6,6 +6,7 @@ import { Button, Card, Field, Input, PageHeader, Select, Skeleton, cx } from '@/
 import { CalendarIcon, CheckCircleIcon, CopyIcon, CreditCardIcon, SmartphoneIcon, UserIcon } from '@/components/icons';
 import type { DoctorSettings } from '@/lib/types';
 import { GoogleCalendarConnect } from '@/components/google-calendar-connect';
+import { DoctorLinkCard } from '@/components/doctor-link-card';
 
 import { api, isDemoMode } from '@/lib/api';
 
@@ -206,6 +207,7 @@ export default function SettingsPage() {
       />
 
       <div className="flex flex-col gap-5">
+        <DoctorLinkCard />
         <ProfilePhotoCard />
 
         {/* Seña */}

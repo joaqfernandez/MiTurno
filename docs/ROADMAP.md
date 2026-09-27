@@ -47,5 +47,5 @@ Login Google está implementado y requiere validación con credenciales reales. 
 
 ## Ideas para más adelante (sin decidir)
 
-- **Link propio de cada médico** (propuesto el 2026-09-27): una dirección corta como `miturnosapp.com/hernanpasarela` que el médico comparte con sus pacientes y abre directamente su agenda. Antes de hacerlo, el fundador tiene que decidir: si el médico también aparece en el buscador público o solo por link (en ese caso, fuera de Google); quién elige el nombre (automático editable o aprobado por el administrador); y si un link viejo sigue funcionando cuando el médico cambia el nombre (recomendado: sí). Requiere nombres reservados (`login`, `admin`, `panel`, `api`, etc.).
+- ~~**Link propio de cada médico**~~ hecho el 2026-09-27 (rama `feature/link-medico`, Notion MT-25): `miturnosapp.com/<nombre>`, el médico sigue apareciendo en el buscador.
 - **Marca «MiTurnos» en plural** (propuesto el 2026-09-27) para coincidir con el dominio `miturnosapp.com`. En el código son unas 30 menciones visibles; los nombres técnicos internos no se cambian. Antes: buscar la marca en el INPI y conviene hacerlo antes de la beta.
