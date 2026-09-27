@@ -93,7 +93,15 @@ class Doctor(Entity, Base):
     cancellationWindowHours: Mapped[int] = mapped_column(Integer, default=24)
     timezone: Mapped[str] = mapped_column(String(100), default="America/Argentina/Mendoza")
     icsFeedToken: Mapped[str | None] = mapped_column(String(128), unique=True)
+    slug: Mapped[str | None] = mapped_column(String(50), unique=True, index=True)  # Link actual; None = lo asigna un administrador.
     __table_args__ = (CheckConstraint('"defaultSlotMinutes" > 0'), CheckConstraint('"cancellationWindowHours" >= 0'))
+
+
+class DoctorLink(Entity, Base):
+    """Todos los nombres de link que tuvo cada médico (el actual y los anteriores); nunca se reasignan."""
+    __tablename__ = "doctor_links"
+    name: Mapped[str] = mapped_column(String(50), unique=True)
+    doctorId: Mapped[str] = mapped_column(ForeignKey("doctor_profiles.id"), index=True)
 
 
 class Location(Entity, Base):

@@ -6,6 +6,7 @@ Formato: `AAAA-MM-DD HH:MM (hora Argentina) · quién · qué cambió, muy resum
 
 ---
 
+- 2026-09-27 17:12 · Claude Code · Link propio de cada médico (`/<nombre>`): nombre automático con nombre y apellido o especialidad, el médico lo cambia desde Configuración, los links viejos redirigen y nunca se reasignan, el administrador asigna los que chocan, sin indexar (migración 0007); la agenda de reserva pasa a `components/doctor-booking.tsx` · rama `feature/link-medico`
 - 2026-09-27 15:22 · Claude Code · Pantalla «Días libres» para vacaciones y días libres: bloqueos por rango de fechas (migración 0006), la API rechaza bloquear días con turnos activos y los lista para que el médico los cancele desde ahí; ideas del link del médico y la marca anotadas en ROADMAP · rama `feature/excepciones-agenda`
 - 2026-09-27 14:50 · Claude Code · BETA.md: pendiente legal de mencionar la IP en los logs en la política de privacidad · rama `seguridad/logs-sin-datos-sensibles`
 - 2026-09-27 14:48 · Claude Code · API: un error inesperado responde 500 genérico con CORS y se registra sin su mensaje (solo tipo, ruta y líneas de código); dos tests de historia clínica verifican el 500 en vez de la excepción, con permiso del fundador · rama `seguridad/logs-sin-datos-sensibles`

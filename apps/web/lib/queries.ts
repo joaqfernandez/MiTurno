@@ -10,6 +10,7 @@ import * as demo from './demo-data';
 import type {
   Appointment,
   Doctor,
+  DoctorLink,
   DoctorLocation,
   DoctorSettings,
   MedicalRecord,
@@ -70,6 +71,45 @@ export function useDoctor(id: string) {
           return d;
         },
       ),
+  });
+}
+
+/** Resuelve el link propio de un médico; un nombre viejo devuelve el médico con su `slug` actual. */
+export function useDoctorByLink(name: string) {
+  return useQuery({
+    // «Este link no existe» se muestra en la página, sin repetirlo en el aviso general.
+    meta: { localError: true },
+    queryKey: ['doctor-link', name],
+    queryFn: () =>
+      withFallback(
+        () => api<Doctor>(`/doctors/by-link/${encodeURIComponent(name)}`),
+        () => {
+          throw new Error('Link no encontrado');
+        },
+      ),
+  });
+}
+
+export function useMyLink() {
+  const { session, ready } = useAuth();
+  return useQuery({
+    enabled: ready && Boolean(session),
+    queryKey: ['my-link', session?.email],
+    queryFn: () => withFallback(() => api<DoctorLink>('/doctors/me/link'), () => ({ slug: null, url: null })),
+  });
+}
+
+export function useSaveMyLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    // La tarjeta muestra el error junto al campo (por ejemplo, «ese link ya está en uso»).
+    meta: { localError: true },
+    mutationFn: (slug: string) =>
+      withFallback(
+        () => api<DoctorLink>('/doctors/me/link', { method: 'PUT', body: JSON.stringify({ slug }) }),
+        () => ({ slug, url: null }),
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-link'] }),
   });
 }
 

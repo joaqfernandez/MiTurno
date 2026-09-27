@@ -173,5 +173,9 @@ class AppointmentState(Input):
     status: Literal["COMPLETED", "NO_SHOW"]
 
 
+class DoctorLinkInput(Input):
+    slug: StrictStr = Field(max_length=100)
+
+
 class UserState(Input):
     status: Literal["ACTIVE", "SUSPENDED"]

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, update
 from .account import consume, digest, invalidate_tokens, lock_user, request_email
+from .doctor_links import assign_automatic
 from .dependencies import session, current_user
 from .models import User, Patient, Doctor, RefreshToken, AuditLog, now
 from .schemas import Register, Login, Refresh, EmailOnly, AccountLink, PasswordReset, check_password
@@ -59,8 +60,11 @@ def register(body: Register, db=Depends(session)):
     db.add(user)
     db.flush()
     fields = dict(userId=user.id, firstName=body.firstName, lastName=body.lastName)
-    db.add(Patient(**fields) if body.role == "PATIENT" else Doctor(**fields, licenseNumber=body.licenseNumber, icsFeedToken=secrets.token_urlsafe(32)))
+    profile = Patient(**fields) if body.role == "PATIENT" else Doctor(**fields, licenseNumber=body.licenseNumber, icsFeedToken=secrets.token_urlsafe(32))
+    db.add(profile)
     db.flush()
+    if body.role == "DOCTOR":
+        assign_automatic(db, profile)
     request_email(db, user, "email_verification")
     return {"message": REGISTERED}
 

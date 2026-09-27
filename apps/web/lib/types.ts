@@ -33,6 +33,13 @@ export interface Doctor {
   defaultSlotMinutes: number;
   cancellationWindowHours: number;
   locations?: DoctorLocation[];
+  /** Nombre actual del link propio (miturnosapp.com/<slug>); null si todavía no tiene. */
+  slug?: string | null;
+}
+
+export interface DoctorLink {
+  slug: string | null;
+  url: string | null;
 }
 
 export interface DoctorLocation {

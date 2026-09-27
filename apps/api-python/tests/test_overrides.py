@@ -9,7 +9,7 @@ import pytest
 from alembic import command
 from sqlalchemy import text
 from app.database import Database
-from app.models import Doctor, ScheduleOverride, User
+from app.models import ScheduleOverride
 from conftest import future_slots, reserve
 from test_migrations import alembic_config
 
@@ -135,12 +135,15 @@ def test_downgrade_splits_ranges_so_no_blocked_day_is_lost(tmp_path):
     command.upgrade(config, "0006")
     database = Database(url)
     try:
+        # SQL y no modelos: los modelos siguen el esquema actual, no el de la revisión 0006.
         with database.transaction() as db:
-            db.add(User(id="u", email="d@example.com", roles=["DOCTOR"], status="ACTIVE"))
-            db.flush()
-            db.add(Doctor(id="d", userId="u", firstName="A", lastName="B", licenseNumber="L", specialtyIds=[], icsFeedToken="t"))
-            db.flush()
-            db.add(ScheduleOverride(doctorId="d", type="BLOCKED", date=date(2030, 1, 1), endDate=date(2030, 1, 3), reason="Vacaciones"))
+            db.execute(text("""INSERT INTO users (id, email, roles, status, "createdAt", "updatedAt")
+                VALUES ('u', 'd@example.com', '["DOCTOR"]', 'ACTIVE', '2030-01-01 00:00:00', '2030-01-01 00:00:00')"""))
+            db.execute(text("""INSERT INTO doctor_profiles (id, "userId", "firstName", "lastName", "licenseNumber", "specialtyIds", "requiresDeposit",
+                "depositCurrency", "defaultSlotMinutes", "cancellationWindowHours", timezone, "createdAt")
+                VALUES ('d', 'u', 'A', 'B', 'L', '[]', 0, 'ARS', 30, 24, 'America/Argentina/Mendoza', '2030-01-01 00:00:00')"""))
+            db.execute(text("""INSERT INTO schedule_overrides (id, "doctorId", type, date, "endDate", reason, "createdAt")
+                VALUES ('r', 'd', 'BLOCKED', '2030-01-01', '2030-01-03', 'Vacaciones', '2030-01-01 00:00:00')"""))
         command.downgrade(config, "0005")
         with database.engine.connect() as connection:
             rows = connection.execute(text("SELECT date, reason FROM schedule_overrides ORDER BY date")).all()

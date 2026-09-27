@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, update
 from .dependencies import session, admin_user
 from .models import User, Doctor, RefreshToken, AuditLog, Job, now
-from .schemas import UserState
+from . import doctor_links
+from .schemas import DoctorLinkInput, UserState
 from .serializers import row
 
 router = APIRouter(prefix="/api/admin", tags=["Administración"])
@@ -25,6 +26,16 @@ def set_status(user_id: str, body: UserState, request: Request, user=Depends(adm
         db.execute(update(RefreshToken).where(RefreshToken.userId == user_id).values(revokedAt=now()))
     db.add(AuditLog(userId=user.user.id, action="user.status", entity="User", entityId=user_id, details={"status": body.status}, ip=request.client.host if request.client else None))
     return {"id": account.id, "status": account.status}
+
+
+@router.put("/doctors/{doctor_id}/link")
+def assign_link(doctor_id: str, body: DoctorLinkInput, request: Request, user=Depends(admin_user), db=Depends(session)):
+    doctor = db.scalar(select(Doctor).where(Doctor.id == doctor_id).with_for_update())
+    if not doctor:
+        raise HTTPException(404, "Médico no encontrado")
+    name = doctor_links.change(db, doctor, body.slug)
+    db.add(AuditLog(userId=user.user.id, action="doctor.link", entity="Doctor", entityId=doctor_id, details={"slug": name}, ip=request.client.host if request.client else None))
+    return {"id": doctor.id, "slug": doctor.slug}
 
 
 @router.get("/jobs")
