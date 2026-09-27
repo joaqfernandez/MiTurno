@@ -6,6 +6,7 @@ Formato: `AAAA-MM-DD HH:MM (hora Argentina) · quién · qué cambió, muy resum
 
 ---
 
+- 2026-09-27 15:22 · Claude Code · Pantalla «Días libres» para vacaciones y días libres: bloqueos por rango de fechas (migración 0006), la API rechaza bloquear días con turnos activos y los lista para que el médico los cancele desde ahí; ideas del link del médico y la marca anotadas en ROADMAP · rama `feature/excepciones-agenda`
 - 2026-09-27 14:50 · Claude Code · BETA.md: pendiente legal de mencionar la IP en los logs en la política de privacidad · rama `seguridad/logs-sin-datos-sensibles`
 - 2026-09-27 14:48 · Claude Code · API: un error inesperado responde 500 genérico con CORS y se registra sin su mensaje (solo tipo, ruta y líneas de código); dos tests de historia clínica verifican el 500 en vez de la excepción, con permiso del fundador · rama `seguridad/logs-sin-datos-sensibles`
 - 2026-09-27 14:41 · Claude Code · API: errores de SQLAlchemy sin valores de la consulta (`hide_parameters`) y log de acceso sin query ni token del feed ICS; `test_logs.py` · rama `seguridad/logs-sin-datos-sensibles`

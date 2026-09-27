@@ -27,6 +27,12 @@ export function formatDateTime(iso: string): string {
   return `${formatDayLong(iso)} · ${formatTime(iso)} h`;
 }
 
+/** Fecha sin hora (YYYY-MM-DD) tal como la cargó el médico, sin corrimiento por zona horaria. */
+export function formatDateOnly(day: string): string {
+  const [year, month, date] = day.split('-').map(Number);
+  return format(new Date(year, month - 1, date), "EEE d 'de' MMMM yyyy", { locale: es });
+}
+
 export function initials(firstName: string, lastName: string): string {
   return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase();
 }

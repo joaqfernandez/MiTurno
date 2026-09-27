@@ -11,6 +11,8 @@ import type {
   Patient,
   Slot,
   Specialty,
+  NewScheduleOverride,
+  ScheduleOverride,
   WeeklyBlock,
   DoctorSettings,
 } from './types';
@@ -228,6 +230,18 @@ export let demoSchedule: WeeklyBlock[] = [
 
 export function setDemoSchedule(blocks: WeeklyBlock[]) {
   demoSchedule = blocks;
+}
+
+export let demoOverrides: ScheduleOverride[] = [];
+
+export function addDemoOverride(item: NewScheduleOverride): ScheduleOverride {
+  const created = { ...item, id: `demo-override-${Date.now()}` };
+  demoOverrides = [...demoOverrides, created].sort((a, b) => a.date.localeCompare(b.date));
+  return created;
+}
+
+export function removeDemoOverride(id: string) {
+  demoOverrides = demoOverrides.filter((item) => item.id !== id);
 }
 
 // --- Ubicaciones de atención del médico logueado ---------------------------

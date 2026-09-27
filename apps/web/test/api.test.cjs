@@ -139,3 +139,10 @@ test('API error codes reach the screen so it can offer the right action', async 
   global.fetch = async () => new Response(JSON.stringify({ message: 'Credenciales inválidas' }), { status: 401 });
   await assert.rejects(api.api('/auth/login', { method: 'POST' }), error => error.status === 401 && error.code === undefined);
 });
+
+test('API error body reaches the screen so it can list conflicting appointments', async () => {
+  const appointments = [{ id: 'a1', startAt: '2030-01-02T12:00:00Z' }];
+  global.fetch = async () => new Response(JSON.stringify({ message: 'Tenés 1 turno en esas fechas.', code: 'APPOINTMENTS_IN_RANGE', appointments }), { status: 409 });
+  await assert.rejects(api.api('/doctors/me/overrides', { method: 'POST' }),
+    error => error.status === 409 && error.code === 'APPOINTMENTS_IN_RANGE' && error.data.appointments[0].id === 'a1');
+});

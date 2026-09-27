@@ -10,7 +10,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     () =>
       new QueryClient({
         queryCache: new QueryCache({ onError: error => setError(error.message) }),
-        mutationCache: new MutationCache({ onError: error => setError(error.message) }),
+        // meta.localError: la pantalla ya muestra el error en contexto; no duplicarlo arriba.
+        mutationCache: new MutationCache({ onError: (error, _v, _c, mutation) => { if (!mutation.meta?.localError) setError(error.message); } }),
         defaultOptions: {
           queries: {
             retry: 0,

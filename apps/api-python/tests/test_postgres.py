@@ -1,7 +1,8 @@
 """Pruebas opt-in en una DB temporal creada y eliminada por este módulo."""
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import datetime, timedelta
 import os
+from zoneinfo import ZoneInfo
 from types import SimpleNamespace
 from uuid import uuid4
 import pytest
@@ -13,7 +14,7 @@ from app.auth import issue_tokens
 from app.config import Settings
 from app.database import Database
 from app.main import create_app
-from app.models import User, Doctor, Appointment, Patient, MedicalEntry, AuditLog, Job, Payment, Notification, now
+from app.models import User, Doctor, Appointment, Patient, MedicalEntry, AuditLog, Job, Payment, Notification, ScheduleOverride, now
 from app.seed import seed
 from app.payments import apply_payment
 from conftest import migrate, SECRET, FakePayments, deliver_emails, link_token
@@ -356,3 +357,29 @@ def test_postgres_forgot_password_limit_holds_under_concurrency(pg):
         assert set(executor.map(request, range(6))) == {202}
     with pg.db.transaction() as db:
         assert db.scalar(select(func.count()).select_from(Notification).where(Notification.template == "password_reset")) == 3
+
+
+def test_postgres_booking_and_day_block_never_both_win(pg):
+    # Reserva y bloqueo toman el mismo candado del médico: o el turno entra y el bloqueo se rechaza, o al revés.
+    with pg.db.transaction() as db:
+        doctor = db.get(Doctor, pg.doctor_id)
+        zone = ZoneInfo(doctor.timezone)
+        doctor_token = issue_tokens(db, db.get(User, doctor.userId), pg.settings)["accessToken"]
+    start = now() + timedelta(days=20)
+    chosen = pg.client.get(f"/api/appointments/availability/{pg.doctor_id}", params={"from": start.isoformat(), "to": (start + timedelta(days=7)).isoformat()}).json()[0]
+    day = datetime.fromisoformat(chosen["startAt"].replace("Z", "+00:00")).astimezone(zone).date().isoformat()
+
+    def book():
+        return pg.client.post("/api/appointments", headers={"Authorization": "Bearer " + pg.tokens[0]["accessToken"]}, json={"doctorId": pg.doctor_id, "startAt": chosen["startAt"]})
+
+    def block():
+        return pg.client.post("/api/doctors/me/overrides", headers={"Authorization": "Bearer " + doctor_token}, json={"type": "BLOCKED", "date": day})
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        booking, blocking = executor.submit(book), executor.submit(block)
+        outcome = (booking.result().status_code, blocking.result().status_code)
+    assert outcome in [(201, 409), (409, 201)]
+    with pg.db.transaction() as db:
+        booked = db.scalar(select(func.count()).select_from(Appointment).where(Appointment.doctorId == pg.doctor_id, Appointment.startAt == datetime.fromisoformat(chosen["startAt"].replace("Z", "+00:00"))))
+        blocked = db.scalar(select(func.count()).select_from(ScheduleOverride).where(ScheduleOverride.doctorId == pg.doctor_id))
+    assert (booked, blocked) in [(1, 0), (0, 1)]

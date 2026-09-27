@@ -119,9 +119,11 @@ class Schedule(Entity, Base):
 
 class ScheduleOverride(Entity, Base):
     __tablename__ = "schedule_overrides"
+    __table_args__ = (CheckConstraint('"endDate" >= "date"', name="ck_schedule_overrides_date_range"),)
     doctorId: Mapped[str] = mapped_column(ForeignKey("doctor_profiles.id"), index=True)
     type: Mapped[str] = mapped_column(String(16))
     date: Mapped[datetime] = mapped_column(Date)
+    endDate: Mapped[datetime] = mapped_column(Date)  # Inclusive; igual a date para un solo día.
     startTime: Mapped[str | None] = mapped_column(String(5))
     endTime: Mapped[str | None] = mapped_column(String(5))
     reason: Mapped[str | None] = mapped_column(String(500))

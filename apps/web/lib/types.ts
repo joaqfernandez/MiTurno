@@ -103,6 +103,19 @@ export interface MedicalRecord {
   entries: MedicalRecordEntry[];
 }
 
+/** Excepción de agenda: días libres/vacaciones (BLOCKED) o franjas extra (EXTRA). Fechas YYYY-MM-DD, ambas inclusive. */
+export interface ScheduleOverride {
+  id: string;
+  type: 'BLOCKED' | 'EXTRA';
+  date: string;
+  endDate: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  reason?: string | null;
+}
+
+export type NewScheduleOverride = Omit<ScheduleOverride, 'id'>;
+
 export interface WeeklyBlock {
   weekday: number; // 0=domingo ... 6=sábado
   startTime: string; // "09:00"

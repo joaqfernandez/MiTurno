@@ -4,7 +4,8 @@ let refreshing: Promise<boolean> | null = null;
 
 export class ApiError extends Error {
   /** `code` identifica errores que la pantalla trata distinto, por ejemplo EMAIL_NOT_VERIFIED. */
-  constructor(message: string, public status: number, public code?: string) { super(message); }
+  /** `data` es el cuerpo del error, para pantallas que muestran detalles (por ejemplo turnos en conflicto). */
+  constructor(message: string, public status: number, public code?: string, public data?: unknown) { super(message); }
 }
 
 function expireSession() {
@@ -59,7 +60,7 @@ export async function apiResponse(path: string, init?: RequestInit): Promise<Res
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     const message = body?.message ?? body?.detail ?? response.statusText;
-    throw new ApiError(Array.isArray(message) ? message.join('. ') : String(message), response.status, typeof body?.code === 'string' ? body.code : undefined);
+    throw new ApiError(Array.isArray(message) ? message.join('. ') : String(message), response.status, typeof body?.code === 'string' ? body.code : undefined, body ?? undefined);
   }
   return response;
 }
