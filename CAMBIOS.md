@@ -6,6 +6,7 @@ Formato: `AAAA-MM-DD HH:MM (hora Argentina) · quién · qué cambió, muy resum
 
 ---
 
+- 2026-09-28 14:29 · Claude Code · Búsqueda de médicos: filtros en la base (antes la especialidad se filtraba después de cortar en 500), el texto también busca por especialidad, páginas de 12 con total; `/medicos` con estado de error y «Reintentar», paginación en la URL y aviso de página sin resultados · rama `feature/busqueda-medicos`
 - 2026-09-27 17:12 · Claude Code · Link propio de cada médico (`/<nombre>`): nombre automático con nombre y apellido o especialidad, el médico lo cambia desde Configuración, los links viejos redirigen y nunca se reasignan, el administrador asigna los que chocan, sin indexar (migración 0007); la agenda de reserva pasa a `components/doctor-booking.tsx` · rama `feature/link-medico`
 - 2026-09-27 15:22 · Claude Code · Pantalla «Días libres» para vacaciones y días libres: bloqueos por rango de fechas (migración 0006), la API rechaza bloquear días con turnos activos y los lista para que el médico los cancele desde ahí; ideas del link del médico y la marca anotadas en ROADMAP · rama `feature/excepciones-agenda`
 - 2026-09-27 14:50 · Claude Code · BETA.md: pendiente legal de mencionar la IP en los logs en la política de privacidad · rama `seguridad/logs-sin-datos-sensibles`

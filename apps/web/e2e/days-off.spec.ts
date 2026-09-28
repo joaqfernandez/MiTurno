@@ -15,7 +15,7 @@ test('doctor blocks vacation days, is warned about booked appointments and resol
   // Un paciente reserva un turno lejano con Valeria; el médico intenta bloquear ese día.
   // Ana y no Lucas: account.spec.ts le cambia la contraseña a Lucas.
   const ana = await (await request.post('/api/auth/login', { data: { email: 'ana@example.com', password: PASSWORD } })).json();
-  const [valeria] = await (await request.get('/api/doctors', { params: { q: 'Valeria' } })).json();
+  const { items: [valeria] } = await (await request.get('/api/doctors', { params: { q: 'Valeria' } })).json();
   const from = new Date(Date.now() + 40 * 86_400_000);
   const slots = await (await request.get(`/api/appointments/availability/${valeria.id}`, {
     params: { from: from.toISOString(), to: new Date(from.getTime() + 7 * 86_400_000).toISOString() },
