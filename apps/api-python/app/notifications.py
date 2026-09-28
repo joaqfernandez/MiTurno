@@ -1,10 +1,33 @@
 from html import escape
 from pathlib import Path
+from zoneinfo import ZoneInfo
 import httpx
 from . import account
-from .models import Notification, User, Appointment, now
+from .models import Notification, User, Appointment, Doctor, now
 
 SUBJECTS = {"appointment_confirmed": "Turno confirmado", "appointment_cancelled": "Turno cancelado", "reminder_24h": "Recordatorio de turno"}
+WEEKDAYS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+MONTHS = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+
+
+def local_when(appointment, doctor):
+    """«lunes 5 de octubre a las 09:00 h», en la zona del médico: es la hora a la que hay que ir."""
+    moment = appointment.startAt.astimezone(ZoneInfo(doctor.timezone))
+    return f"{WEEKDAYS[moment.weekday()]} {moment.day} de {MONTHS[moment.month - 1]} a las {moment:%H:%M} h"
+
+
+def appointment_text(item, user, appointment, settings, db):
+    doctor = db.get(Doctor, appointment.doctorId)
+    subject = SUBJECTS[item.template]
+    lines = [f"{subject}: {doctor.firstName} {doctor.lastName}, {local_when(appointment, doctor)}."]
+    if item.template == "appointment_cancelled" and appointment.status == "CANCELLED_BY_DOCTOR":
+        lines.append("Lo canceló el profesional.")
+        if appointment.cancellationReason:
+            lines.append(f"Motivo: {appointment.cancellationReason}")
+    # El médico también recibe estos avisos: cada uno va a su propia pantalla.
+    page = "panel" if "DOCTOR" in (user.roles or []) else "mis-turnos"
+    lines.append(f"Consultá tu agenda en {settings.web_url}/{page}.")
+    return subject, " ".join(lines)
 
 
 def send(db, notification_id, settings, transport=None):
@@ -20,8 +43,7 @@ def send(db, notification_id, settings, transport=None):
         subject, text, html = message
     else:
         appointment = db.get(Appointment, item.payload["appointmentId"])
-        subject = SUBJECTS[item.template]
-        text = f"{subject}. Fecha y hora (UTC): {appointment.startAt.isoformat()}. Consultá tu agenda en {settings.web_url}/mis-turnos."
+        subject, text = appointment_text(item, user, appointment, settings, db)
         html = f"<p>{escape(text)}</p>"
     if item.channel == "EMAIL" and not settings.resend_api_key and settings.mailbox_dir:
         # Solo desarrollo (config.py lo prohíbe en producción): entrega real a una carpeta local.

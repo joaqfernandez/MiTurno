@@ -225,6 +225,7 @@ export function ConfirmDialog({
   loading,
   onConfirm,
   onClose,
+  children,
 }: {
   open: boolean;
   title: string;
@@ -233,6 +234,8 @@ export function ConfirmDialog({
   loading?: boolean;
   onConfirm: () => void;
   onClose: () => void;
+  /** Contenido extra entre la descripción y los botones (por ejemplo, un campo de motivo). */
+  children?: ReactNode;
 }) {
   if (!open) return null;
   return (
@@ -249,6 +252,7 @@ export function ConfirmDialog({
       >
         <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-600">{description}</p>
+        {children}
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose} disabled={loading}>
             Volver

@@ -72,7 +72,7 @@ export default function DaysOffPage() {
   async function confirmCancel() {
     if (!toCancel) return;
     try {
-      await cancel.mutateAsync(toCancel.id);
+      await cancel.mutateAsync({ id: toCancel.id });
     } catch {
       return; // El aviso general ya muestra el error de la API; el turno sigue en la lista.
     }

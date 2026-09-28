@@ -17,11 +17,11 @@ import {
   subMonths,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useDoctorAgenda } from '@/lib/queries';
-import { formatTime, initials } from '@/lib/format';
+import { useCancelAppointment, useDoctorAgenda } from '@/lib/queries';
+import { formatDateTime, formatTime, initials } from '@/lib/format';
 import { AppointmentStatusBadge } from '@/components/appointment-status';
-import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton, cx } from '@/components/ui';
-import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, UsersIcon } from '@/components/icons';
+import { Avatar, Button, Card, ConfirmDialog, EmptyState, Field, PageHeader, Skeleton, Textarea, cx } from '@/components/ui';
+import { CalendarIcon, CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, UsersIcon } from '@/components/icons';
 import type { Appointment } from '@/lib/types';
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -42,7 +42,16 @@ function Stat({ icon: I, label, value }: { icon: typeof ClockIcon; label: string
   );
 }
 
-function AgendaItem({ appt }: { appt: Appointment }) {
+/** Solo turnos activos y futuros: uno pasado se finaliza, no se cancela. */
+function cancellable(appt: Appointment) {
+  return (appt.status === 'CONFIRMED' || appt.status === 'PENDING_PAYMENT') && new Date(appt.startAt) > new Date();
+}
+
+function patientName(appt: Appointment) {
+  return appt.patient ? `${appt.patient.firstName} ${appt.patient.lastName}` : 'el paciente';
+}
+
+function AgendaItem({ appt, onCancel }: { appt: Appointment; onCancel: (appt: Appointment) => void }) {
   return (
     <li className="flex items-center gap-4 px-5 py-4">
       <div className="w-14 shrink-0 text-right">
@@ -65,12 +74,38 @@ function AgendaItem({ appt }: { appt: Appointment }) {
         </>
       )}
       <AppointmentStatusBadge status={appt.status} />
+      {cancellable(appt) && (
+        <Button variant="danger" size="sm" onClick={() => onCancel(appt)} aria-label={`Cancelar turno de ${patientName(appt)} a las ${formatTime(appt.startAt)}`}>
+          Cancelar
+        </Button>
+      )}
     </li>
   );
 }
 
 export default function PanelHome() {
   const { data: agenda, isLoading } = useDoctorAgenda();
+  const cancel = useCancelAppointment();
+  const [toCancel, setToCancel] = useState<Appointment | null>(null);
+  const [reason, setReason] = useState('');
+  const [notice, setNotice] = useState('');
+
+  function openCancel(appt: Appointment) {
+    setToCancel(appt);
+    setReason('');
+    setNotice('');
+  }
+
+  async function confirmCancel() {
+    if (!toCancel) return;
+    try {
+      await cancel.mutateAsync({ id: toCancel.id, reason: reason.trim() || undefined });
+    } catch {
+      return; // El aviso general muestra el error de la API; el diálogo queda abierto para reintentar.
+    }
+    setNotice(`Turno de ${patientName(toCancel)} cancelado. Le avisamos por email.`);
+    setToCancel(null);
+  }
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(new Date()));
   const [selectedDay, setSelectedDay] = useState(() => format(new Date(), 'yyyy-MM-dd'));
 
@@ -245,6 +280,12 @@ export default function PanelHome() {
 
           <section className="mt-6" aria-label={`Turnos del ${selectedLabel}`}>
             <h2 className="mb-3 text-sm font-semibold capitalize text-slate-500">{selectedLabel}</h2>
+            {notice && (
+              <p role="status" className="mb-3 flex items-center gap-2 rounded-lg bg-success-50 p-3 text-sm text-success-700">
+                <CheckCircleIcon className="h-4 w-4 shrink-0" />
+                {notice}
+              </p>
+            )}
             {selectedAppointments.length === 0 ? (
               <EmptyState
                 icon={<CalendarIcon className="h-8 w-8" />}
@@ -255,7 +296,7 @@ export default function PanelHome() {
               <Card>
                 <ul className="divide-y divide-slate-100">
                   {selectedAppointments.map((a) => (
-                    <AgendaItem key={a.id} appt={a} />
+                    <AgendaItem key={a.id} appt={a} onCancel={openCancel} />
                   ))}
                 </ul>
               </Card>
@@ -263,6 +304,26 @@ export default function PanelHome() {
           </section>
         </>
       )}
+
+      <ConfirmDialog
+        open={Boolean(toCancel)}
+        title="Cancelar turno"
+        description={
+          toCancel
+            ? `${patientName(toCancel)} · ${formatDateTime(toCancel.startAt)}. Le avisamos por email y, si pagó seña, se la devolvemos. No se puede deshacer.`
+            : ''
+        }
+        confirmLabel="Cancelar turno"
+        loading={cancel.isPending}
+        onConfirm={confirmCancel}
+        onClose={() => setToCancel(null)}
+      >
+        <div className="mt-4">
+          <Field label="Motivo (opcional)" htmlFor="cancel-reason" helper="Se lo enviamos al paciente en el aviso.">
+            <Textarea id="cancel-reason" maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />
+          </Field>
+        </div>
+      </ConfirmDialog>
     </main>
   );
 }

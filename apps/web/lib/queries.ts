@@ -181,9 +181,10 @@ export function useBookAppointment() {
 export function useCancelAppointment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
+    // `reason` es opcional; cuando cancela el médico, se le envía al paciente en el aviso.
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
       withFallback(
-        () => api<void>(`/appointments/${id}`, { method: 'DELETE' }),
+        () => api<void>(`/appointments/${id}`, { method: 'DELETE', ...(reason ? { body: JSON.stringify({ reason }) } : {}) }),
         () => demo.demoCancel(id),
       ),
     onSuccess: () => {
