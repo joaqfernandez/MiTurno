@@ -399,3 +399,23 @@ def test_postgres_two_doctors_cannot_claim_the_same_link(pg):
     with pg.db.transaction() as db:
         assert db.scalar(select(func.count()).select_from(Doctor).where(Doctor.slug == "consultorio-centro")) == 1
     assert "ya está en uso" in next(r for r in responses if r.status_code == 409).json()["detail"]
+
+
+def test_postgres_block_detects_appointments_by_local_date_in_far_zones(pg):
+    # Mismo caso que test_timezones.py con PostgreSQL: el turno de las 09:00 en Auckland (UTC+13) cae el día anterior en UTC.
+    with pg.db.transaction() as db:
+        doctor = db.get(Doctor, pg.doctor_id)
+        doctor.timezone = "Pacific/Auckland"
+        doctor_token = issue_tokens(db, db.get(User, doctor.userId), pg.settings)["accessToken"]
+    zone = ZoneInfo("Pacific/Auckland")
+    day = (now() + timedelta(days=30)).astimezone(zone).date()
+    while day.weekday() > 4:  # El seed atiende de lunes a viernes.
+        day += timedelta(days=1)
+    first = datetime.combine(day, datetime.min.time(), zone)
+    slots = pg.client.get(f"/api/appointments/availability/{pg.doctor_id}", params={"from": first.isoformat(), "to": (first + timedelta(days=1)).isoformat()}).json()
+    start = datetime.fromisoformat(slots[0]["startAt"].replace("Z", "+00:00"))
+    assert start.astimezone(zone).strftime("%H:%M") == "09:00" and start.date() == day - timedelta(days=1)
+    booked = pg.client.post("/api/appointments", headers={"Authorization": "Bearer " + pg.tokens[0]["accessToken"]}, json={"doctorId": pg.doctor_id, "startAt": slots[0]["startAt"]})
+    assert booked.status_code == 201, booked.text
+    response = pg.client.post("/api/doctors/me/overrides", headers={"Authorization": "Bearer " + doctor_token}, json={"type": "BLOCKED", "date": day.isoformat()})
+    assert response.status_code == 409

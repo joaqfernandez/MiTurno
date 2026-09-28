@@ -14,6 +14,11 @@ class UTCDateTime(TypeDecorator):
     impl = DateTime(timezone=True)
     cache_ok = True
 
+    def process_bind_param(self, value, dialect):
+        # SQLite guarda y compara la hora tal cual, sin zona: se normaliza a UTC antes de escribir o comparar.
+        # Sin esto, «00:00 en Auckland» se comparaba como «00:00 UTC» (test_timezones.py).
+        return value.astimezone(timezone.utc) if value is not None and value.tzinfo is not None else value
+
     def process_result_value(self, value, dialect):
         return value.replace(tzinfo=timezone.utc) if value and value.tzinfo is None else value
 
