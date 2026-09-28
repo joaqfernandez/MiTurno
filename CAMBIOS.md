@@ -6,6 +6,7 @@ Formato: `AAAA-MM-DD HH:MM (hora Argentina) · quién · qué cambió, muy resum
 
 ---
 
+- 2026-09-28 18:11 · Claude Code · `.env.example` reescrito: todas las variables en uso (API y web), cuáles son obligatorias en producción, sin valores secretos y con aviso de repo público; `test_env_example.py` lo protege · rama `chore/env-example`
 - 2026-09-28 14:52 · Claude Code · Botón «Cancelar» en la agenda del médico con motivo opcional; los avisos de turnos muestran médico y hora local del médico (antes UTC), el motivo si cancela el médico y el link al panel para el médico · rama `feature/medico-cancela-turnos`
 - 2026-09-28 14:42 · Claude Code · Tests de zona horaria (otras zonas, cambios de horario de verano, fecha local en Auckland) y corrección: `UTCDateTime` normaliza a UTC al escribir y comparar; en SQLite un bloqueo en zonas lejanas no detectaba turnos reservados (PostgreSQL no estaba afectado) · rama `tests/zonas-horarias`
 - 2026-09-28 14:29 · Claude Code · Búsqueda de médicos: filtros en la base (antes la especialidad se filtraba después de cortar en 500), el texto también busca por especialidad, páginas de 12 con total; `/medicos` con estado de error y «Reintentar», paginación en la URL y aviso de página sin resultados · rama `feature/busqueda-medicos`
