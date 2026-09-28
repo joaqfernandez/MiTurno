@@ -170,7 +170,7 @@ export default function MyAppointmentsPage() {
         loading={cancel.isPending}
         onConfirm={async () => {
           if (toCancel) {
-            await cancel.mutateAsync(toCancel.id);
+            await cancel.mutateAsync({ id: toCancel.id });
             setToCancel(null);
           }
         }}
