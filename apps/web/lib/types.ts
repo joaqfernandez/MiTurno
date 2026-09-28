@@ -37,6 +37,13 @@ export interface Doctor {
   slug?: string | null;
 }
 
+export interface DoctorPage {
+  items: Doctor[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface DoctorLink {
   slug: string | null;
   url: string | null;

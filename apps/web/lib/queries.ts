@@ -3,7 +3,7 @@
 /**
  * Hooks de datos reales; los fixtures solo se usan en una sesión demo explícita.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, withFallback } from './api';
 import { useAuth } from './auth';
 import * as demo from './demo-data';
@@ -11,6 +11,7 @@ import type {
   Appointment,
   Doctor,
   DoctorLink,
+  DoctorPage,
   DoctorLocation,
   DoctorSettings,
   MedicalRecord,
@@ -34,26 +35,31 @@ export function useSpecialties() {
   });
 }
 
-export function useDoctors(params: { specialty?: string; q?: string }) {
-  const search = new URLSearchParams();
+export const DOCTORS_PAGE_SIZE = 12;
+
+export function useDoctors(params: { specialty?: string; q?: string; page: number }) {
+  const search = new URLSearchParams({ page: String(params.page), pageSize: String(DOCTORS_PAGE_SIZE) });
   if (params.specialty) search.set('specialty', params.specialty);
   if (params.q) search.set('q', params.q);
 
   return useQuery({
+    // La pantalla muestra el error en lugar de la lista, con «Reintentar»; no se repite en el aviso general.
+    meta: { localError: true },
+    // Al cambiar de página se mantiene la anterior visible hasta que llega la nueva.
+    placeholderData: keepPreviousData,
     queryKey: ['doctors', params],
     queryFn: () =>
       withFallback(
-        () => api<Doctor[]>(`/doctors?${search}`),
+        () => api<DoctorPage>(`/doctors?${search}`),
         () => {
-          const q = params.q?.toLowerCase().trim();
-          return demo.demoDoctors.filter((d) => {
+          const terms = (params.q ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+          const all = demo.demoDoctors.filter((d) => {
             const bySpecialty = !params.specialty || d.specialties.some((s) => s.slug === params.specialty);
-            const byQ =
-              !q ||
-              `${d.firstName} ${d.lastName}`.toLowerCase().includes(q) ||
-              d.specialties.some((s) => s.name.toLowerCase().includes(q));
-            return bySpecialty && byQ;
+            const text = `${d.firstName} ${d.lastName} ${d.specialties.map((s) => s.name).join(' ')}`.toLowerCase();
+            return bySpecialty && terms.every((term) => text.includes(term));
           });
+          const start = (params.page - 1) * DOCTORS_PAGE_SIZE;
+          return { items: all.slice(start, start + DOCTORS_PAGE_SIZE), total: all.length, page: params.page, pageSize: DOCTORS_PAGE_SIZE };
         },
       ),
   });

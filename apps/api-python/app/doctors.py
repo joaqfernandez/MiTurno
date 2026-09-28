@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from sqlalchemy import delete, select, or_
+from sqlalchemy import String, and_, cast, delete, func, select, or_
 from .dependencies import session, doctor_user
 from . import doctor_links
 from .models import Doctor, DoctorLink, User, Specialty, Schedule, ScheduleOverride, Location
@@ -19,13 +19,27 @@ def specialties(db=Depends(session)):
     return [row(item) for item in db.scalars(select(Specialty).order_by(Specialty.name))]
 
 
+def has_specialty(ids):
+    # specialtyIds es una lista JSON; se compara como texto para funcionar igual en SQLite y PostgreSQL.
+    return or_(*(cast(Doctor.specialtyIds, String).contains(f'"{item}"', autoescape=True) for item in ids)) if ids else False
+
+
 @router.get("/doctors")
-def search(specialty: str | None = None, q: str = Query(default="", max_length=100), db=Depends(session)):
-    query = select(Doctor).join(User, User.id == Doctor.userId).where(User.status == "ACTIVE")
-    if q:
-        query = query.where(or_(Doctor.firstName.ilike(f"%{q}%"), Doctor.lastName.ilike(f"%{q}%")))
-    doctors = [serialize(db, item) for item in db.scalars(query.order_by(Doctor.lastName).limit(500))]
-    return [item for item in doctors if not specialty or any(s["slug"] == specialty for s in item["specialties"])]
+def search(specialty: str | None = Query(default=None, max_length=100), q: str = Query(default="", max_length=100),
+           page: int = Query(default=1, ge=1, le=10000), pageSize: int = Query(default=12, ge=1, le=50), db=Depends(session)):
+    """Médicos activos, filtrados en la base (no en memoria) y paginados en orden estable."""
+    conditions = [User.status == "ACTIVE"]
+    if specialty:
+        conditions.append(has_specialty(list(db.scalars(select(Specialty.id).where(Specialty.slug == specialty)))))
+    # Cada palabra debe aparecer en el nombre, el apellido o una especialidad: «valeria roldan», «cardiologia».
+    for term in q.split()[:5]:
+        # autoescape: «%» o «_» se buscan como texto, no como comodines de SQL.
+        matching = list(db.scalars(select(Specialty.id).where(or_(Specialty.name.icontains(term, autoescape=True), Specialty.slug.icontains(term, autoescape=True)))))
+        conditions.append(or_(Doctor.firstName.icontains(term, autoescape=True), Doctor.lastName.icontains(term, autoescape=True), has_specialty(matching)))
+    base = select(Doctor).join(User, User.id == Doctor.userId).where(and_(*conditions))
+    total = db.scalar(select(func.count()).select_from(base.subquery()))
+    items = db.scalars(base.order_by(Doctor.lastName, Doctor.firstName, Doctor.id).offset((page - 1) * pageSize).limit(pageSize))
+    return {"items": [serialize(db, item) for item in items], "total": total, "page": page, "pageSize": pageSize}
 
 
 @router.get("/doctors/me/settings")

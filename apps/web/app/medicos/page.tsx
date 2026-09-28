@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
-import { useDoctors, useSpecialties } from '@/lib/queries';
+import { DOCTORS_PAGE_SIZE, useDoctors, useSpecialties } from '@/lib/queries';
 import { formatMoney, initials } from '@/lib/format';
 import { Avatar, Badge, Button, Card, cx, EmptyState, Input, Select, Skeleton } from '@/components/ui';
-import { ArrowRightIcon, CreditCardIcon, SearchIcon, StethoscopeIcon } from '@/components/icons';
+import { AlertCircleIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, CreditCardIcon, SearchIcon, StethoscopeIcon } from '@/components/icons';
 import type { Doctor } from '@/lib/types';
 
 function DoctorCard({ doctor }: { doctor: Doctor }) {
@@ -72,18 +72,25 @@ function DoctorSearch() {
   const params = useSearchParams();
   const specialty = params.get('specialty') ?? '';
   const q = params.get('q') ?? '';
+  const page = Math.max(1, Number.parseInt(params.get('pagina') ?? '1', 10) || 1);
 
   const [text, setText] = useState(q);
   const { data: specialties } = useSpecialties();
-  const { data: doctors, isLoading } = useDoctors({ specialty: specialty || undefined, q: q || undefined });
+  const { data, isLoading, isError, isFetching, refetch } = useDoctors({ specialty: specialty || undefined, q: q || undefined, page });
+  const doctors = data?.items;
+  const pages = data ? Math.max(1, Math.ceil(data.total / DOCTORS_PAGE_SIZE)) : 1;
 
-  function updateParams(next: { specialty?: string; q?: string }) {
+  // Cambiar un filtro vuelve a la página 1; la página queda en la URL para poder recargar o compartir.
+  function updateParams(next: { specialty?: string; q?: string; page?: number }) {
     const sp = new URLSearchParams();
     const nextSpecialty = next.specialty ?? specialty;
     const nextQ = next.q ?? q;
+    const nextPage = next.page ?? 1;
     if (nextSpecialty) sp.set('specialty', nextSpecialty);
     if (nextQ) sp.set('q', nextQ);
+    if (nextPage > 1) sp.set('pagina', String(nextPage));
     router.replace(`/medicos${sp.size ? `?${sp}` : ''}`);
+    if (next.page) window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   const specialtyName = specialties?.find((s) => s.slug === specialty)?.name;
@@ -141,7 +148,33 @@ function DoctorSearch() {
       </form>
 
       {/* Resultados */}
-      {!isLoading && doctors?.length === 0 ? (
+      {isError && !data ? (
+        <div className="mt-6">
+          <EmptyState
+            icon={<AlertCircleIcon className="h-8 w-8" />}
+            title="No pudimos cargar los médicos"
+            description="Puede ser un problema de conexión. Probá de nuevo en unos segundos."
+            action={
+              <Button variant="secondary" onClick={() => refetch()} loading={isFetching}>
+                Reintentar
+              </Button>
+            }
+          />
+        </div>
+      ) : data && data.total > 0 && data.items.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            icon={<StethoscopeIcon className="h-8 w-8" />}
+            title="Esta página no tiene resultados"
+            description="Puede que la lista haya cambiado desde que abriste el link."
+            action={
+              <Button variant="secondary" onClick={() => updateParams({ page: 1 })}>
+                Ir a la primera página
+              </Button>
+            }
+          />
+        </div>
+      ) : !isLoading && doctors?.length === 0 ? (
         <div className="mt-6">
           <EmptyState
             icon={<StethoscopeIcon className="h-8 w-8" />}
@@ -169,6 +202,37 @@ function DoctorSearch() {
           {isLoading && Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[28rem]" />)}
           {doctors?.map((d) => <DoctorCard key={d.id} doctor={d} />)}
         </div>
+      )}
+
+      {isError && data && (
+        <p role="alert" className="mt-6 flex flex-wrap items-center gap-2 rounded-lg bg-danger-50 p-3 text-sm text-danger-600">
+          <AlertCircleIcon className="h-4 w-4 shrink-0" />
+          No pudimos cargar esta página.
+          <button type="button" onClick={() => refetch()} className="font-medium underline">
+            Reintentar
+          </button>
+        </p>
+      )}
+
+      {data && data.total > 0 && (
+        <nav aria-label="Páginas de resultados" className="mt-8 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            {data.total === 1 ? '1 médico' : `${data.total} médicos`}
+            {pages > 1 && ` · Página ${page} de ${pages}`}
+          </p>
+          {pages > 1 && (
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" disabled={page <= 1 || isFetching} onClick={() => updateParams({ page: page - 1 })}>
+                <ChevronLeftIcon className="h-4 w-4" />
+                Anterior
+              </Button>
+              <Button variant="secondary" size="sm" disabled={page >= pages || isFetching} onClick={() => updateParams({ page: page + 1 })}>
+                Siguiente
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </nav>
       )}
     </main>
   );
