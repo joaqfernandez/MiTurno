@@ -28,13 +28,13 @@ Las marcas indican implementación local verificada; las integraciones externas 
 - [x] Pantallas de lectura/escritura del médico y lectura del paciente.
 - [ ] Adjuntos privados R2 con autorización de carga/descarga.
 - [ ] Exportación PDF.
-- [ ] Registro de accesos denegados y definición de permisos administrativos mínimos.
+- [ ] Registro de accesos denegados. Permisos administrativos mínimos: el administrador ya no lee historias clínicas (2026-11-10).
 
 ## Antes de producción
 
 Checklist detallado y ordenado para la beta: [BETA.md](BETA.md).
 
-- [x] Resolver avisos de seguridad de Next.js y dependencias web (Next 16 y React 19, 2026-09-25).
+- [x] Resolver avisos de seguridad de Next.js y dependencias web (Next 16 y React 19, 2026-09-25; Next 16.4.6 y dependencias Python, 2026-11-10).
 - [ ] Monitoreo y logs estructurados sin datos sensibles.
 - [ ] Rate limiting compartido para varias réplicas.
 - [ ] Backups automáticos y prueba de restauración.

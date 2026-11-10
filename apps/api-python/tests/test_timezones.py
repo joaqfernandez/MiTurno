@@ -50,6 +50,26 @@ def future_weekday(weekday):
     return day
 
 
+def next_clock_change(zone, before, after):
+    """Próximo día (a más de 3 días) en que la zona pasa de UTC+before a UTC+after (en horas).
+
+    Los cambios de horario se buscan desde hoy en lugar de fijar una fecha: con una fecha fija el test
+    deja de servir cuando ese día pasa, porque la API nunca ofrece turnos en el pasado.
+    """
+    tz, day = ZoneInfo(zone), date.today() + timedelta(days=4)
+    for _ in range(800):
+        offsets = [datetime.combine(item, time(12), tz).utcoffset() for item in (day - timedelta(days=1), day)]
+        if offsets == [timedelta(hours=before), timedelta(hours=after)]:
+            return day
+        day += timedelta(days=1)
+    raise AssertionError(f"{zone} no tiene un cambio de UTC{before:+} a UTC{after:+} en los próximos 800 días")
+
+
+def only(day, start, end):
+    """Horario solo para el día de la semana de esa fecha (weekday 0 = domingo como en el modelo)."""
+    return {(day.weekday() + 1) % 7: (start, end)}
+
+
 def test_doctor_in_another_zone_offers_its_local_hours(system):
     configure(system, "America/Bogota", every_day("09:00", "11:00"))  # UTC-5, sin horario de verano.
     day = future_weekday(2)
@@ -70,25 +90,29 @@ def test_booking_is_stored_in_utc_and_returned_as_the_same_instant(system):
 
 
 def test_offsets_follow_each_day_across_chile_daylight_saving_end(system):
-    # Chile vuelve a UTC-4 el 4/4/2027: 09:00 local es 12:00 UTC el sábado 3 y 13:00 UTC el domingo 4.
+    # Chile vuelve a UTC-4 en abril (por ejemplo el 4/4/2027): 09:00 local es 12:00 UTC el día anterior y 13:00 UTC ese día.
     configure(system, "America/Santiago", every_day("09:00", "10:00"))
-    assert day_slots(system, date(2027, 4, 3), "America/Santiago")[0][0] == datetime(2027, 4, 3, 12, 0, tzinfo=UTC)
-    assert day_slots(system, date(2027, 4, 4), "America/Santiago")[0][0] == datetime(2027, 4, 4, 13, 0, tzinfo=UTC)
+    day = next_clock_change("America/Santiago", -3, -4)
+    before = day - timedelta(days=1)
+    assert day_slots(system, before, "America/Santiago")[0][0] == datetime.combine(before, time(12, 0), UTC)
+    assert day_slots(system, day, "America/Santiago")[0][0] == datetime.combine(day, time(13, 0), UTC)
 
 
 def test_spring_forward_gap_is_never_offered(system):
-    # Nueva York adelanta el reloj el 14/3/2027 a las 02:00: las 02:00 y 02:30 locales no existen ese día.
-    configure(system, "America/New_York", {0: ("01:00", "04:00")})
-    slots = day_slots(system, date(2027, 3, 14), "America/New_York")
+    # Nueva York adelanta el reloj en marzo (por ejemplo el 14/3/2027) a las 02:00: las 02:00 y 02:30 locales no existen ese día.
+    day = next_clock_change("America/New_York", -5, -4)
+    configure(system, "America/New_York", only(day, "01:00", "04:00"))
+    slots = day_slots(system, day, "America/New_York")
     assert local_times(slots, "America/New_York") == ["01:00", "01:30", "03:00", "03:30"]
     assert all(end - start == timedelta(minutes=30) for start, end in slots)
     assert all(earlier[1] <= later[0] for earlier, later in zip(slots, slots[1:]))
 
 
 def test_fall_back_repeated_hour_offers_distinct_real_slots(system):
-    # Nueva York atrasa el reloj el 1/11/2026: la hora 01:00-02:00 local ocurre dos veces.
-    configure(system, "America/New_York", {0: ("00:30", "03:00")})
-    slots = day_slots(system, date(2026, 11, 1), "America/New_York")
+    # Nueva York atrasa el reloj en noviembre (por ejemplo el 1/11/2026): la hora 01:00-02:00 local ocurre dos veces.
+    day = next_clock_change("America/New_York", -4, -5)
+    configure(system, "America/New_York", only(day, "00:30", "03:00"))
+    slots = day_slots(system, day, "America/New_York")
     assert local_times(slots, "America/New_York") == ["00:30", "01:00", "01:30", "01:00", "01:30", "02:00", "02:30"]
     assert all(end - start == timedelta(minutes=30) for start, end in slots)
     assert all(earlier[1] <= later[0] for earlier, later in zip(slots, slots[1:]))

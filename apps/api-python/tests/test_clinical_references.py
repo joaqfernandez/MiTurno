@@ -93,7 +93,8 @@ def test_colleague_can_write_own_note_but_cannot_amend_another_author(clinical):
     assert entry(clinical, 'colleague', amendsEntryId=original['id']).status_code == 403
     assert counts(clinical) == before
     assert entry(clinical, 'colleague', appointmentId='colleague-visit').status_code == 201
-    for role, can_amend in [('doctor', True), ('colleague', False), ('own', False), ('admin', False)]:
+    # El administrador ya no lee historias (decisión del fundador, 2026-11-10): ver test_admin.py.
+    for role, can_amend in [('doctor', True), ('colleague', False), ('own', False)]:
         record = clinical.client.get('/api/medical-records/patient-own', headers=clinical.headers(role)).json()
         assert next(e for e in record['entries'] if e['id'] == original['id'])['canAmend'] is can_amend
 

@@ -25,6 +25,8 @@ Los datos de salud son datos sensibles (Ley 25.326) y la historia clínica tiene
 - [x] **Actualizar Next.js.** `npm audit --omit=dev` (2026-09-22): 1 crítica (`next`), 2 altas (`postcss`, `nanoid`). Resuelto el 2026-09-25: Next 16.3.6 y React 19.3; `npm audit` sin vulnerabilidades. Rama `deps/actualiza-nextjs`.
 - [x] **Recuperar contraseña** por email con token de un solo uso y expiración. Hecho el 2026-09-26, rama `feature/recuperar-contrasena-verificar-email`; defensas y tests en `apps/api-python/README.md`.
 - [x] **Verificación de email** al registrarse. Mismo cambio: sin email confirmado no se puede ingresar. El envío real depende de «Email real con Resend» (Fase 2).
+- [x] **Dependencias sin vulnerabilidades conocidas** al 2026-11-10: Next 16.4.6 (10 avisos nuevos, 1 crítico), PyJWT, certifi y dnspython. `npm audit` y `pip-audit` en 0. Hay que repetirlo antes de cada despliegue hasta automatizarlo (ver pendientes en [CI.md](CI.md)).
+- [x] **Cabeceras de seguridad en la web** (2026-11-10): política de contenido (CSP), HSTS, sin marcos de otros sitios; `e2e/security-headers.spec.ts`. La API no publica `/docs` ni `/openapi.json` en producción.
 - [x] Revisar que logs y errores no incluyan datos personales ni clínicos. Hecho el 2026-09-27, rama `seguridad/logs-sin-datos-sensibles`: errores de la base sin valores, log de acceso sin query ni token del feed ICS y errores inesperados registrados sin su mensaje (`test_logs.py`). El log de acceso conserva la IP (necesaria para seguridad): mencionarlo en la política de privacidad.
 
 ## Fase 2 — Infraestructura (staging primero)
@@ -40,6 +42,7 @@ Hoy no hay ningún archivo de despliegue en el repositorio. Hay que correr cuatr
 - [ ] **Monitoreo de errores** (por ejemplo Sentry) y alerta de caída sobre `/api/health`.
 - [ ] Email real con Resend y dominio verificado (SPF/DKIM).
 - [ ] Una sola instancia de API en la beta: el rate limiting actual es en memoria por proceso.
+- [ ] Decidir cómo llega el navegador a la API: llamándola directo (`NEXT_PUBLIC_API_URL=https://api.miturnosapp.com`, recomendado) o por el proxy `/api` de la web. Con el proxy, la API ve la IP del servidor web en lugar de la del usuario y el límite por IP de `/api/auth` (30 por minuto) se comparte entre todos.
 - [ ] Configurar la API para leer la IP real detrás del proxy del hosting (uvicorn `--proxy-headers` y `--forwarded-allow-ips` con la IP del proxy). Sin esto todos los pedidos parecen venir de la misma IP y el límite por IP de `/api/auth` deja de servir.
 
 ### Criterios para elegir hosting
@@ -53,15 +56,16 @@ Hoy no hay ningún archivo de despliegue en el repositorio. Hay que correr cuatr
 ## Fase 3 — Producto mínimo para médicos
 
 - [x] Pantalla de **excepciones de agenda** (vacaciones, días libres). Hecho el 2026-09-27, rama `feature/excepciones-agenda`: `/panel/dias-libres`, rangos de fechas, días completos u horas. Si hay turnos activos en esas fechas no se bloquea: se listan y el médico los cancela desde la misma pantalla (decisión del fundador; nada se cancela automáticamente). Las franjas extra (EXTRA) siguen solo por API.
-- [ ] Revisar zonas horarias en la UI.
+- [ ] Revisar zonas horarias en la UI. La API ya está probada (`test_timezones.py`); la web muestra las horas en la zona del navegador, no en la del médico. Con médicos y pacientes en Argentina se ve bien; falla si alguien reserva desde otro país.
 - [ ] **Login con Google** validado con credenciales reales en staging.
-- [ ] Canal de feedback visible para los médicos (formulario o contacto directo).
+- [ ] Canal de feedback visible para los médicos (formulario o contacto directo). Falta definir una dirección de soporte: el email «Tu contraseña cambió» dice «avisá a soporte» sin indicar a dónde.
 - [ ] Onboarding: el administrador aprueba a cada médico (ya existe en `/admin`).
-- [ ] Seña con Mercado Pago **desactivada** en la beta (hoy los médicos pueden no exigir seña).
+- [x] Seña con Mercado Pago **desactivada** en la beta. Hecho el 2026-11-10, rama `chore/preparacion-produccion`: sin `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET` la API rechaza activar la seña (`test_hallazgos::test_deposit_cannot_be_enabled_without_payment_provider`). Para la beta alcanza con no cargar esas variables. Antes el médico podía activarla igual y sus pacientes recibían un error al reservar.
 
 ## Fase 4 — Lanzamiento de la beta
 
 - [ ] Producción creada con lo aprendido en staging.
+- [ ] Crear la cuenta del administrador con `npm run admin:create -- email` (ver [README](../README.md)); el administrador demo no existe en producción.
 - [ ] Seed demo bloqueado en producción (ya garantizado por `test_seed.py` y `test_config.py`).
 - [ ] 3–5 médicos invitados y aprobados manualmente.
 - [ ] Revisión semanal de errores, feedback y backups.

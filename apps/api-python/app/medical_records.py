@@ -22,8 +22,7 @@ def relationship(db, doctor_id, patient_id, *, lock=False):
 def can_read(db, principal, patient_id):
     if principal.patient and principal.patient.id == patient_id:
         return
-    if "ADMIN" in principal.user.roles:
-        return
+    # El administrador opera la plataforma pero no lee historias: no tiene relación asistencial con el paciente.
     if principal.doctor and relationship(db, principal.doctor.id, patient_id):
         return
     raise HTTPException(403, "No existe relación asistencial con este paciente")
