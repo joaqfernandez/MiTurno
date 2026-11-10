@@ -9,6 +9,8 @@ export interface Session {
   role: UserRole;
   name: string;
   email: string;
+  /** true si al ingresar faltaba aceptar los términos vigentes: la web lleva a /legal/aceptar. */
+  acceptancePending?: boolean;
   /** true cuando la sesión es simulada porque el backend no está disponible */
   demo?: boolean;
 }

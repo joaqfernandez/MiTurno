@@ -23,7 +23,7 @@ def with_deposit(system, amount=100):
 @pytest.mark.parametrize("extra", [{"roles": ["ADMIN"]}, {"role": "ADMIN"}, {"status": "ACTIVE", "role": "DOCTOR", "licenseNumber": "L"},
                                    {"userId": "user-admin"}, {"id": "chosen-id"}])
 def test_registration_rejects_privileged_fields(system, extra):
-    body = {"email": "nuevo@example.com", "password": PASSWORD, "firstName": "N", "lastName": "P", "role": "PATIENT", **extra}
+    body = {"email": "nuevo@example.com", "password": PASSWORD, "firstName": "N", "lastName": "P", "role": "PATIENT", "acceptTerms": True, "acceptHealthData": True, **extra}
     assert system.client.post("/api/auth/register", json=body).status_code == 400
     with system.database.transaction() as db:
         assert db.scalar(select(User.id).where(User.email == "nuevo@example.com")) is None

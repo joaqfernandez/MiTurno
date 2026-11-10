@@ -13,8 +13,11 @@ from app.database import Database
 from app.main import create_app
 from app.models import User, Patient, Doctor, Specialty, Schedule
 from app.auth import passwords, issue_tokens
+from app.legal import TERMS_VERSION
 from app.worker import run_one
 
+# Cuentas de prueba con los términos vigentes ya aceptados; test_legal.py prueba las que no.
+ACCEPTED = dict(termsVersion=TERMS_VERSION, termsAcceptedAt=datetime.now(timezone.utc), healthDataConsentAt=datetime.now(timezone.utc))
 SECRET = "test-only-secret-with-at-least-64-bytes-for-all-tested-hmac-algorithms"
 PASSWORD = "Test-password123"
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,7 +66,7 @@ def system(tmp_path, password_hash):
         specialty = Specialty(id="specialty", name="Clínica", slug="clinica")
         db.add(specialty)
         for name, role in [("own", "PATIENT"), ("other", "PATIENT"), ("doctor", "DOCTOR"), ("admin", "ADMIN")]:
-            db.add(User(id=f"user-{name}", email=f"{name}@example.com", passwordHash=password_hash, roles=[role], status="ACTIVE", emailVerifiedAt=datetime.now(timezone.utc)))
+            db.add(User(id=f"user-{name}", email=f"{name}@example.com", passwordHash=password_hash, roles=[role], status="ACTIVE", emailVerifiedAt=datetime.now(timezone.utc), **ACCEPTED))
         db.flush()
         db.add_all([
             Patient(id="patient-own", userId="user-own", firstName="Ana", lastName="Castro", documentId="12345678", birthDate=datetime(1990, 1, 1, tzinfo=timezone.utc), healthInsurance="Original", insuranceNumber="ABC"),

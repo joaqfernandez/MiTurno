@@ -28,7 +28,7 @@ def emails_to(system, tmp_path, email):
 
 
 def register(system, email, role="PATIENT", password=PASSWORD):
-    body = {"email": email, "password": password, "firstName": "Nueva", "lastName": "Cuenta", "role": role}
+    body = {"email": email, "password": password, "firstName": "Nueva", "lastName": "Cuenta", "role": role, "acceptTerms": True, "acceptHealthData": True}
     if role == "DOCTOR":
         body["licenseNumber"] = f"MAT-{email}"
     return system.client.post("/api/auth/register", json=body)

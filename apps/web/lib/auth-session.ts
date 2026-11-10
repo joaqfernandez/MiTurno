@@ -3,7 +3,7 @@ import type { Session, UserRole } from './types';
 export interface AuthResponse {
   accessToken: string | null;
   refreshToken: string | null;
-  user: { email: string; roles: UserRole[]; name?: string; patientProfileId?: string | null };
+  user: { email: string; roles: UserRole[]; name?: string; patientProfileId?: string | null; acceptancePending?: string[] };
 }
 
 export function sessionFromAuth(res: AuthResponse): Session {
@@ -15,5 +15,6 @@ export function sessionFromAuth(res: AuthResponse): Session {
     role: res.user.roles.includes('ADMIN') ? 'ADMIN' : res.user.roles.includes('DOCTOR') ? 'DOCTOR' : 'PATIENT',
     name: res.user.name ?? res.user.email,
     email: res.user.email,
+    ...(res.user.acceptancePending?.length ? { acceptancePending: true } : {}),
   };
 }

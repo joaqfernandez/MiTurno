@@ -13,7 +13,7 @@ Checklist para que un grupo pequeño de médicos use MiTurno con pacientes reale
 Los datos de salud son datos sensibles (Ley 25.326) y la historia clínica tiene reglas propias (Ley 26.529). Nada de esta sección debe resolverlo una IA por su cuenta.
 
 - [ ] Consulta con abogado especializado en datos personales y salud.
-- [ ] Términos y condiciones y política de privacidad (páginas en la web y aceptación al registrarse).
+- [ ] Términos y condiciones y política de privacidad (páginas en la web y aceptación al registrarse). Hay borradores de los términos, la política de privacidad y el consentimiento en [docs/legal/](legal/README.md), sin revisión legal. La aceptación ya funciona (2026-11-10): casillas en el registro y pantalla obligatoria para cuentas sin aceptar, incluidas las de Google. Falta publicar los textos aprobados en `apps/web/app/legal/page.tsx` y cambiar `TERMS_VERSION` en `apps/api-python/app/legal.py` (hoy `borrador-1`), lo que vuelve a pedir la aceptación a todas las cuentas.
   - La política de privacidad debe mencionar que los registros técnicos (logs) guardan la IP y la ruta de cada pedido, para seguridad y límite de solicitudes, sin datos clínicos. Definir con el abogado cuánto tiempo se conservan.
 - [ ] Consentimiento del paciente para el tratamiento de datos de salud.
 - [ ] Acuerdo con los médicos: quién es responsable de los datos y quién los trata.

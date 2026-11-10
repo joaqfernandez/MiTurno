@@ -16,7 +16,7 @@ def verify_latest(system, tmp_path, email):
 
 
 def test_registration_login_refresh_logout(system, tmp_path):
-    payload = {"email": "new@example.com", "password": PASSWORD, "firstName": "Nuevo", "lastName": "Paciente", "role": "PATIENT", "phone": "+5492611234567"}
+    payload = {"email": "new@example.com", "password": PASSWORD, "firstName": "Nuevo", "lastName": "Paciente", "role": "PATIENT", "phone": "+5492611234567", "acceptTerms": True, "acceptHealthData": True}
     response = system.client.post("/api/auth/register", json=payload)
     assert response.status_code == 202, response.text
     # El registro ya no entrega sesión: primero hay que confirmar el email.
@@ -36,7 +36,7 @@ def test_registration_login_refresh_logout(system, tmp_path):
 
 
 def test_doctor_requires_verification(system, tmp_path):
-    payload = {"email": "newdoctor@example.com", "password": PASSWORD, "firstName": "Nuevo", "lastName": "Médico", "role": "DOCTOR", "licenseNumber": "ABC"}
+    payload = {"email": "newdoctor@example.com", "password": PASSWORD, "firstName": "Nuevo", "lastName": "Médico", "role": "DOCTOR", "licenseNumber": "ABC", "acceptTerms": True}
     response = system.client.post("/api/auth/register", json=payload)
     assert response.status_code == 202
     assert "accessToken" not in response.json()

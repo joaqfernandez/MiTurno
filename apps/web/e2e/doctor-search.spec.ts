@@ -9,7 +9,7 @@ test('patient pages through doctors, searches by specialty and recovers from an 
   for (let i = 1; i <= 13; i++) {
     const n = String(i).padStart(2, '0');
     const created = await request.post('/api/auth/register', {
-      data: { email: `zeta${n}@example.com`, password: PASSWORD, firstName: `Medico${n}`, lastName: 'Zeta', role: 'DOCTOR', licenseNumber: `ZETA-${n}` },
+      data: { email: `zeta${n}@example.com`, password: PASSWORD, firstName: `Medico${n}`, lastName: 'Zeta', role: 'DOCTOR', licenseNumber: `ZETA-${n}`, acceptTerms: true },
     });
     expect(created.status()).toBe(202);
   }

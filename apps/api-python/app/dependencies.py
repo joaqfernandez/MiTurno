@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import jwt
 from sqlalchemy import select
+from . import legal
 from .models import User, Patient, Doctor
 
 bearer = HTTPBearer(auto_error=False)
@@ -20,7 +21,8 @@ class Principal:
     doctor: Doctor | None
 
 
-def current_user(request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(bearer), db=Depends(session)):
+def authenticated_user(request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(bearer), db=Depends(session)):
+    """Sesión válida, sin exigir términos aceptados. Solo para aceptar los términos y cerrar sesión."""
     if not credentials:
         raise HTTPException(401, "Se requiere iniciar sesión", headers={"WWW-Authenticate": "Bearer"})
     try:
@@ -35,6 +37,14 @@ def current_user(request: Request, credentials: HTTPAuthorizationCredentials | N
     if type(claims.get("sv")) is not int or claims["sv"] != user.sessionVersion:
         raise HTTPException(401, "Sesión revocada", headers={"X-Session-Invalid": "1"})
     return Principal(user, db.scalar(select(Patient).where(Patient.userId == user.id)), db.scalar(select(Doctor).where(Doctor.userId == user.id)))
+
+
+def current_user(principal=Depends(authenticated_user)):
+    """Sesión válida y términos vigentes aceptados: es la puerta de todo lo demás, sin importar cómo se creó la cuenta."""
+    missing = legal.pending(principal.user)
+    if missing:
+        raise legal.AcceptanceRequired(missing)
+    return principal
 
 
 def patient_user(user=Depends(current_user)):

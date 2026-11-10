@@ -44,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-slate-500 sm:px-6">
               <p>MiTurno — Turnos médicos online</p>
               <p>Historia clínica protegida y auditada</p>
+              <a className="hover:text-slate-700 hover:underline" href="/legal">Términos y privacidad</a>
             </div>
           </footer>
         </Providers>

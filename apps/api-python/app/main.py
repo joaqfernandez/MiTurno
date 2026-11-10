@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
+from . import legal
 from .config import Settings
 from .database import Database
 from .payments import MercadoPago
@@ -106,6 +107,10 @@ def create_app(database_path: Path | None = None, secret: str | None = None, *, 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_request, error):
         return JSONResponse(status_code=400, content={"statusCode": 400, "message": [f'{".".join(map(str, item["loc"]))}: {item["msg"]}' for item in error.errors()]})
+
+    @app.exception_handler(legal.AcceptanceRequired)
+    async def acceptance_required(_request, error):
+        return JSONResponse(status_code=403, content={"message": legal.MESSAGE, "code": "ACCEPTANCE_REQUIRED", "pending": error.pending})
 
     @app.exception_handler(IntegrityError)
     async def integrity_error(_request, _error):

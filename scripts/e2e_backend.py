@@ -29,9 +29,10 @@ class BrowserGoogle(GoogleLogin):
         return f"{self.settings.api_url}/test-google?" + urlencode({"state": state})
 
     def exchange(self, code, nonce):
-        if code not in ("ana", "valeria", "admin"):
+        if code not in ("ana", "valeria", "admin", "nueva"):
             raise ValueError("Unknown test account")
-        return {"sub": f"browser-{code}", "email": f"{code}@example.com"}
+        # «nueva» no existe en la base: MiTurno le crea la cuenta al volver de Google.
+        return {"sub": f"browser-{code}", "email": f"{code}@example.com", "given_name": code.title(), "family_name": "Google"}
 
 
 with TemporaryDirectory(prefix="miturno-e2e-") as directory:
@@ -53,7 +54,7 @@ with TemporaryDirectory(prefix="miturno-e2e-") as directory:
     def consent(state: str):
         return f'''<form action="/api/auth/google/callback">
           <input type="hidden" name="state" value="{escape(state, quote=True)}">
-          <label>Cuenta de prueba<select name="code"><option>ana</option><option>valeria</option><option>admin</option></select></label>
+          <label>Cuenta de prueba<select name="code"><option>ana</option><option>valeria</option><option>admin</option><option>nueva</option></select></label>
           <button>Autorizar prueba</button></form>'''
     @app.get("/test-mailbox")
     def latest_email(to: str):

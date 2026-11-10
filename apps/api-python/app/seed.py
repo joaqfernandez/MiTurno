@@ -7,6 +7,7 @@ from .auth import passwords
 from .config import Settings
 from .database import Database
 from .doctor_links import assign_automatic
+from .legal import TERMS_VERSION
 from .models import User, Patient, Doctor, Specialty, Schedule, Appointment, MedicalRecord, MedicalEntry, AuditLog, Location, now
 
 PASSWORD = "DemoTurnos2026!"
@@ -29,7 +30,8 @@ def seed(database, settings):
             ("pedro@example.com", "Pedro", "Gómez", "DOCTOR"),
             ("admin@example.com", "", "", "ADMIN"),
         ]:
-            user = User(email=email, passwordHash=passwords.hash(PASSWORD), roles=[role], status="ACTIVE", phone="+5492615550100", emailVerifiedAt=now())
+            user = User(email=email, passwordHash=passwords.hash(PASSWORD), roles=[role], status="ACTIVE", phone="+5492615550100", emailVerifiedAt=now(),
+                        termsVersion=TERMS_VERSION, termsAcceptedAt=now(), healthDataConsentAt=now() if role == "PATIENT" else None)
             db.add(user)
             db.flush()
             if role == "ADMIN":

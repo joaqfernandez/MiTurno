@@ -5,13 +5,14 @@ from sqlalchemy import select, func, update, delete
 from sqlalchemy.exc import IntegrityError
 from app.auth import issue_tokens
 from app.models import User, Doctor, Appointment, MedicalRecord, MedicalEntry, AuditLog, now
+from conftest import ACCEPTED
 
 
 @pytest.fixture
 def clinical(system, password_hash):
     with system.database.transaction() as db:
         db.add(User(id='user-colleague', email='colleague@example.com', passwordHash=password_hash,
-                    roles=['DOCTOR'], status='ACTIVE', emailVerifiedAt=now()))
+                    roles=['DOCTOR'], status='ACTIVE', emailVerifiedAt=now(), **ACCEPTED))
         db.flush()
         db.add(Doctor(id='colleague', userId='user-colleague', firstName='Pedro', lastName='Prueba',
                       licenseNumber='COLLEAGUE', icsFeedToken='colleague-feed'))

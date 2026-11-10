@@ -60,6 +60,9 @@ export async function apiResponse(path: string, init?: RequestInit): Promise<Res
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     const message = body?.message ?? body?.detail ?? response.statusText;
+    if (body?.code === 'ACCEPTANCE_REQUIRED' && typeof window !== 'undefined' && window.location && !window.location.pathname.startsWith('/legal')) {
+      window.location.assign('/legal/aceptar');
+    }
     throw new ApiError(Array.isArray(message) ? message.join('. ') : String(message), response.status, typeof body?.code === 'string' ? body.code : undefined, body ?? undefined);
   }
   return response;

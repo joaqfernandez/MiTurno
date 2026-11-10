@@ -9,9 +9,10 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select, update
 from .account import consume, digest, invalidate_tokens, lock_user, request_email
 from .doctor_links import assign_automatic
-from .dependencies import session, current_user
+from . import legal
+from .dependencies import session, authenticated_user
 from .models import User, Patient, Doctor, RefreshToken, AuditLog, now
-from .schemas import Register, Login, Refresh, EmailOnly, AccountLink, PasswordReset, check_password
+from .schemas import Acceptance, Register, Login, Refresh, EmailOnly, AccountLink, PasswordReset, check_password
 
 router = APIRouter(prefix="/api/auth", tags=["Autenticación"])
 passwords = PasswordHasher()
@@ -33,7 +34,8 @@ def user_payload(db, user):
     profile = doctor or patient
     return {"id": user.id, "email": user.email, "roles": user.roles, "status": user.status,
             "name": f"{profile.firstName} {profile.lastName}" if profile else user.email,
-            "patientProfileId": patient.id if patient else None, "doctorProfileId": doctor.id if doctor else None}
+            "patientProfileId": patient.id if patient else None, "doctorProfileId": doctor.id if doctor else None,
+            "acceptancePending": legal.pending(user)}
 
 def issue_tokens(db, user, settings):
     payload = user_payload(db, user)
@@ -46,7 +48,7 @@ def issue_tokens(db, user, settings):
     return {"accessToken": token, "refreshToken": raw, "user": payload}
 
 @router.post("/register", status_code=202)
-def register(body: Register, db=Depends(session)):
+def register(body: Register, request: Request, db=Depends(session)):
     email = str(body.email).lower()
     # Se calcula siempre: mismo costo exista o no la cuenta.
     password_hash = passwords.hash(body.password)
@@ -59,6 +61,7 @@ def register(body: Register, db=Depends(session)):
                 roles=[body.role], status="ACTIVE" if body.role == "PATIENT" else "PENDING_VERIFICATION")
     db.add(user)
     db.flush()
+    legal.record(db, user, body.acceptTerms, body.acceptHealthData, request.client.host if request.client else None)
     fields = dict(userId=user.id, firstName=body.firstName, lastName=body.lastName)
     profile = Patient(**fields) if body.role == "PATIENT" else Doctor(**fields, licenseNumber=body.licenseNumber, icsFeedToken=secrets.token_urlsafe(32))
     db.add(profile)
@@ -99,9 +102,24 @@ def refresh(body: Refresh, request: Request, db=Depends(session)):
     return issue_tokens(db, user, request.app.state.settings)
 
 @router.post("/logout")
-def logout(body: Refresh, principal=Depends(current_user), db=Depends(session)):
+def logout(body: Refresh, principal=Depends(authenticated_user), db=Depends(session)):
     db.execute(update(RefreshToken).where(RefreshToken.tokenHash == digest(body.refreshToken), RefreshToken.userId == principal.user.id).values(revokedAt=now()))
     return {"ok": True}
+
+@router.get("/acceptance")
+def acceptance(principal=Depends(authenticated_user)):
+    return {"version": legal.TERMS_VERSION, "pending": legal.pending(principal.user)}
+
+
+@router.post("/acceptance")
+def accept(body: Acceptance, request: Request, principal=Depends(authenticated_user), db=Depends(session)):
+    user = lock_user(db, id=principal.user.id)
+    missing = legal.record(db, user, body.acceptTerms, body.acceptHealthData, request.client.host if request.client else None)
+    if missing:
+        # Respuesta en lugar de excepción: lo que sí se aceptó tiene que quedar guardado (una excepción revierte la transacción).
+        return JSONResponse(status_code=403, content={"message": legal.MESSAGE, "code": "ACCEPTANCE_REQUIRED", "pending": missing})
+    return {"version": legal.TERMS_VERSION, "pending": []}
+
 
 @router.post("/password/forgot", status_code=202)
 def forgot_password(body: EmailOnly, db=Depends(session)):

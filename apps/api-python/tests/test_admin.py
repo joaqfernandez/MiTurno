@@ -69,7 +69,7 @@ def test_create_admin_refuses_a_suspended_admin(system):
 
 
 def test_no_web_route_creates_admins(system):
-    body = {"email": "nuevo@example.com", "password": "Clave-segura-123", "firstName": "A", "lastName": "B", "role": "ADMIN"}
+    body = {"email": "nuevo@example.com", "password": "Clave-segura-123", "firstName": "A", "lastName": "B", "role": "ADMIN", "acceptTerms": True, "acceptHealthData": True}
     assert system.client.post("/api/auth/register", json=body).status_code == 400
     with system.database.transaction() as db:
         assert db.scalar(select(User).where(User.email == "nuevo@example.com")) is None
