@@ -5,13 +5,14 @@ from sqlalchemy import select, func, update, delete
 from sqlalchemy.exc import IntegrityError
 from app.auth import issue_tokens
 from app.models import User, Doctor, Appointment, MedicalRecord, MedicalEntry, AuditLog, now
+from conftest import ACCEPTED
 
 
 @pytest.fixture
 def clinical(system, password_hash):
     with system.database.transaction() as db:
         db.add(User(id='user-colleague', email='colleague@example.com', passwordHash=password_hash,
-                    roles=['DOCTOR'], status='ACTIVE', emailVerifiedAt=now()))
+                    roles=['DOCTOR'], status='ACTIVE', emailVerifiedAt=now(), **ACCEPTED))
         db.flush()
         db.add(Doctor(id='colleague', userId='user-colleague', firstName='Pedro', lastName='Prueba',
                       licenseNumber='COLLEAGUE', icsFeedToken='colleague-feed'))
@@ -93,7 +94,8 @@ def test_colleague_can_write_own_note_but_cannot_amend_another_author(clinical):
     assert entry(clinical, 'colleague', amendsEntryId=original['id']).status_code == 403
     assert counts(clinical) == before
     assert entry(clinical, 'colleague', appointmentId='colleague-visit').status_code == 201
-    for role, can_amend in [('doctor', True), ('colleague', False), ('own', False), ('admin', False)]:
+    # El administrador ya no lee historias (decisión del fundador, 2026-11-10): ver test_admin.py.
+    for role, can_amend in [('doctor', True), ('colleague', False), ('own', False)]:
         record = clinical.client.get('/api/medical-records/patient-own', headers=clinical.headers(role)).json()
         assert next(e for e in record['entries'] if e['id'] == original['id'])['canAmend'] is can_amend
 

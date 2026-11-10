@@ -14,11 +14,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
+from . import legal
 from .config import Settings
 from .database import Database
 from .payments import MercadoPago
 from .calendar import GoogleCalendar
-from . import auth, patients, doctors, appointments, medical_records, payments, calendar, admin, google_auth
+from . import auth, patients, doctors, appointments, medical_records, payments, calendar, admin, analytics, google_auth
 
 logger = logging.getLogger("miturno.api")
 ICS_FEED = re.compile(r"(/api/calendar/feed/)[^/]+(\.ics)$")
@@ -58,7 +59,10 @@ def create_app(database_path: Path | None = None, secret: str | None = None, *, 
             google.client.close()
         if hasattr(login_google, "client"):
             login_google.client.close()
-    app = FastAPI(title="MiTurno API", version="1.0.0", lifespan=lifespan)
+    # En producción no se publica el listado de endpoints (/docs, /redoc, /openapi.json): solo sirve para desarrollar.
+    public_docs = settings.environment != "production"
+    app = FastAPI(title="MiTurno API", version="1.0.0", lifespan=lifespan, docs_url="/docs" if public_docs else None,
+                  redoc_url="/redoc" if public_docs else None, openapi_url="/openapi.json" if public_docs else None)
     app.state.database, app.state.settings = database, settings
     app.state.login_provider = login_google
     app.state.payment_provider, app.state.calendar_provider = provider, google
@@ -104,6 +108,10 @@ def create_app(database_path: Path | None = None, secret: str | None = None, *, 
     async def validation_error(_request, error):
         return JSONResponse(status_code=400, content={"statusCode": 400, "message": [f'{".".join(map(str, item["loc"]))}: {item["msg"]}' for item in error.errors()]})
 
+    @app.exception_handler(legal.AcceptanceRequired)
+    async def acceptance_required(_request, error):
+        return JSONResponse(status_code=403, content={"message": legal.MESSAGE, "code": "ACCEPTANCE_REQUIRED", "pending": error.pending})
+
     @app.exception_handler(IntegrityError)
     async def integrity_error(_request, _error):
         return JSONResponse(status_code=409, content={"message": "Los datos entran en conflicto con un registro existente"})
@@ -119,6 +127,6 @@ def create_app(database_path: Path | None = None, secret: str | None = None, *, 
             connection.execute(text("SELECT version_num FROM alembic_version"))
         return {"status": "ok", "backend": "python"}
 
-    for module in (auth, patients, doctors, appointments, medical_records, payments, calendar, admin, google_auth):
+    for module in (auth, patients, doctors, appointments, medical_records, payments, calendar, admin, analytics, google_auth):
         app.include_router(module.router)
     return app

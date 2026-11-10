@@ -18,7 +18,7 @@ WEB_APP = Path(__file__).resolve().parents[2] / "web" / "app"
 
 
 def register_doctor(system, email, first="Hernán", last="Pasarela"):
-    body = {"email": email, "password": PASSWORD, "firstName": first, "lastName": last, "role": "DOCTOR", "licenseNumber": email}
+    body = {"email": email, "password": PASSWORD, "firstName": first, "lastName": last, "role": "DOCTOR", "licenseNumber": email, "acceptTerms": True}
     assert system.client.post("/api/auth/register", json=body).status_code == 202
     with system.database.transaction() as db:
         return db.scalar(select(Doctor).join(User).where(User.email == email))

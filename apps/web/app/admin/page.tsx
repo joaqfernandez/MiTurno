@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { Button, Card, Input, PageHeader } from '@/components/ui';
+import { AdminAnalytics } from '@/components/admin-analytics';
 
 interface DoctorReview { id: string; userId: string; firstName: string; lastName: string; licenseNumber: string; email: string; status: string; slug: string | null }
 interface PendingJob { id: string; kind: string; status: string; attempts: number; error?: string }
@@ -21,8 +22,9 @@ export default function AdminPage() {
   });
   const retry = useMutation({ mutationFn: (id: string) => api(`/admin/jobs/${id}/retry`, { method: 'POST' }), onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-jobs'] }); } });
   if (!enabled) return <main className="mx-auto max-w-4xl px-4 py-8">Ingresá con una cuenta administradora.</main>;
-  return <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-    <PageHeader title="Administración" subtitle="Verificación de profesionales y seguimiento de envíos pendientes." />
+  return <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+    <PageHeader title="Administración" subtitle="Números de MiTurno, verificación de profesionales y seguimiento de envíos pendientes." />
+    <AdminAnalytics sessionEmail={session?.email} />
     <h2 className="text-lg font-semibold">Profesionales</h2>
     {doctors.data?.map(doctor => <Card key={doctor.id} className="flex flex-wrap items-center justify-between gap-4 p-5">
       <div><h3 className="font-semibold">{doctor.firstName} {doctor.lastName}</h3><p>Matrícula: {doctor.licenseNumber}</p><p className="text-sm text-slate-500">{doctor.email} · {doctor.status}</p>

@@ -42,6 +42,10 @@ class User(Entity, Base):
     status: Mapped[str] = mapped_column(String(32), default="ACTIVE")
     sessionVersion: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     emailVerifiedAt: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # Aceptación de términos (versión y fecha) y consentimiento para datos de salud: ver app/legal.py.
+    termsVersion: Mapped[str | None] = mapped_column(String(32))
+    termsAcceptedAt: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    healthDataConsentAt: Mapped[datetime | None] = mapped_column(UTCDateTime)
     updatedAt: Mapped[datetime] = mapped_column(UTCDateTime, default=now, onupdate=now)
 
 

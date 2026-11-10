@@ -47,11 +47,14 @@ def settings(user=Depends(doctor_user), db=Depends(session)):
     return {key: getattr(user.doctor, key) for key in DoctorSettings.model_fields}
 
 
-def save_settings(body, user, db):
+def save_settings(body, user, db, request):
     changes = body.model_dump(exclude_unset=True)
     for key, value in changes.items():
         if value is None and key not in ("bio", "depositAmount"):
             raise HTTPException(400, f"{key} no admite null")
+    # Sin Mercado Pago configurado nadie podría reservar con un médico que exige seña (la reserva responde 503).
+    if changes.get("requiresDeposit") and not request.app.state.payment_provider.configured:
+        raise HTTPException(400, "El cobro de señas todavía no está disponible. Desactivá la seña para guardar.")
     requires = changes.get("requiresDeposit", user.doctor.requiresDeposit)
     amount = changes.get("depositAmount", user.doctor.depositAmount)
     if requires and (amount is None or amount <= 0):
@@ -70,15 +73,15 @@ def save_settings(body, user, db):
 
 
 @router.patch("/doctors/me/settings")
-def update_settings(body: DoctorSettings, user=Depends(doctor_user), db=Depends(session)):
-    return save_settings(body, user, db)
+def update_settings(body: DoctorSettings, request: Request, user=Depends(doctor_user), db=Depends(session)):
+    return save_settings(body, user, db, request)
 
 
 @router.patch("/doctors/{doctor_id}/settings")
-def update_settings_by_id(doctor_id: str, body: DoctorSettings, user=Depends(doctor_user), db=Depends(session)):
+def update_settings_by_id(doctor_id: str, body: DoctorSettings, request: Request, user=Depends(doctor_user), db=Depends(session)):
     if doctor_id != user.doctor.id:
         raise HTTPException(403, "Perfil ajeno")
-    return save_settings(body, user, db)
+    return save_settings(body, user, db, request)
 
 
 @router.get("/doctors/me/schedule")

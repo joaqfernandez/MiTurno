@@ -23,7 +23,7 @@ def with_deposit(system, amount=100):
 @pytest.mark.parametrize("extra", [{"roles": ["ADMIN"]}, {"role": "ADMIN"}, {"status": "ACTIVE", "role": "DOCTOR", "licenseNumber": "L"},
                                    {"userId": "user-admin"}, {"id": "chosen-id"}])
 def test_registration_rejects_privileged_fields(system, extra):
-    body = {"email": "nuevo@example.com", "password": PASSWORD, "firstName": "N", "lastName": "P", "role": "PATIENT", **extra}
+    body = {"email": "nuevo@example.com", "password": PASSWORD, "firstName": "N", "lastName": "P", "role": "PATIENT", "acceptTerms": True, "acceptHealthData": True, **extra}
     assert system.client.post("/api/auth/register", json=body).status_code == 400
     with system.database.transaction() as db:
         assert db.scalar(select(User.id).where(User.email == "nuevo@example.com")) is None
@@ -112,3 +112,19 @@ def test_cancellation_notifies_patient_and_doctor(system):
     with system.database.transaction() as db:
         created = [n for n in db.scalars(select(Notification)) if n.id not in before]
     assert {n.userId for n in created} == {"user-own", "user-doctor"}
+
+
+# BETA.md, Fase 3: sin Mercado Pago configurado un médico no puede exigir seña.
+# Antes se guardaba igual y sus pacientes recibían un 503 al reservar: la agenda quedaba inutilizable sin aviso.
+def test_deposit_cannot_be_enabled_without_payment_provider(system):
+    headers = system.headers("doctor")
+    system.provider.configured = False
+    response = system.client.patch("/api/doctors/me/settings", json={"requiresDeposit": True, "depositAmount": 1000}, headers=headers)
+    assert response.status_code == 400 and "seña" in response.json()["detail"]
+    with system.database.transaction() as db:
+        assert db.get(Doctor, "doctor").requiresDeposit is False
+    # El resto de la configuración se sigue guardando, también enviando la seña desactivada como hace la web.
+    assert system.client.patch("/api/doctors/me/settings", json={"requiresDeposit": False, "defaultSlotMinutes": 20}, headers=headers).status_code == 200
+    assert reserve(system).status_code == 201
+    system.provider.configured = True
+    assert system.client.patch("/api/doctors/me/settings", json={"requiresDeposit": True, "depositAmount": 1000}, headers=headers).status_code == 200

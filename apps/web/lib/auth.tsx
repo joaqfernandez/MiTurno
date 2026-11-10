@@ -28,6 +28,9 @@ export interface RegisterData {
   licenseNumber?: string;
   /** Obligatorio para pacientes: le permite al médico contactarlos ante una necesidad. */
   phone?: string;
+  /** Casillas del registro; la API rechaza la cuenta si no llegan marcadas. */
+  acceptTerms: boolean;
+  acceptHealthData: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);

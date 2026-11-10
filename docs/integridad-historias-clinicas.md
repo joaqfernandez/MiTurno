@@ -11,7 +11,7 @@ Una evolución pertenece a una historia y tiene como autor al médico autenticad
 - Se pueden enmendar enmiendas: cada enlace conserva historia, autor y episodio. La entrada anterior nunca se modifica ni se borra.
 - Corregir una entrada cuyo turno se canceló después de firmarla no exige que ese turno vuelva a estar activo, pero sigue exigiendo la relación asistencial indicada arriba. Si no queda ningún turno habilitante, el médico no puede acceder ni escribir por esta vía.
 
-Se conserva la lectura del paciente sobre su propia historia, la lectura del médico con relación asistencial y la lectura administrativa existente. El listado anidado de enmiendas se limita a la misma historia. `canAmend` permite que el formulario ofrezca solo entradas propias; la autorización siempre se vuelve a verificar en el backend.
+Se conserva la lectura del paciente sobre su propia historia, la lectura del médico con relación asistencial y la lectura administrativa existente (eliminada el 2026-11-10: el administrador ya no lee historias). El listado anidado de enmiendas se limita a la misma historia. `canAmend` permite que el formulario ofrezca solo entradas propias; la autorización siempre se vuelve a verificar en el backend.
 
 ## Persistencia y concurrencia
 

@@ -21,11 +21,18 @@ class Register(Input):
     role: Literal["PATIENT", "DOCTOR"]
     licenseNumber: StrictStr | None = Field(default=None, max_length=100)
     phone: StrictStr | None = Field(default=None, max_length=64)
+    # Casillas del registro: tienen que llegar marcadas; nunca se asumen.
+    acceptTerms: StrictBool = False
+    acceptHealthData: StrictBool = False
 
     @model_validator(mode="after")
     def license_required(self):
         if self.role == "DOCTOR" and not (self.licenseNumber or "").strip():
             raise ValueError("La matrícula es obligatoria")
+        if not self.acceptTerms:
+            raise ValueError("Tenés que aceptar los términos y condiciones")
+        if self.role == "PATIENT" and not self.acceptHealthData:
+            raise ValueError("Tenés que autorizar el tratamiento de tus datos de salud")
         check_password(self.password, self.email)
         return self
 
@@ -45,6 +52,11 @@ class AccountLink(Input):
 
 class PasswordReset(AccountLink):
     password: StrictStr = Field(min_length=8, max_length=128)
+
+
+class Acceptance(Input):
+    acceptTerms: StrictBool = False
+    acceptHealthData: StrictBool = False
 
 
 class Refresh(Input):

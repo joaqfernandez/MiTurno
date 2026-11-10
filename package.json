@@ -12,6 +12,7 @@
     "worker:api": "node scripts/backend.mjs worker",
     "db:migrate": "node scripts/backend.mjs migrate",
     "db:seed": "node scripts/backend.mjs seed",
+    "admin:create": "node scripts/backend.mjs create-admin",
     "test:api": "node scripts/backend.mjs test",
     "test:api:pg": "node scripts/backend.mjs test-pg",
     "test:web": "npm run test --workspace apps/web",

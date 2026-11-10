@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { Button, Card, Field, Input, cx } from '@/components/ui';
 import { StethoscopeIcon, UserIcon } from '@/components/icons';
 import type { UserRole } from '@/lib/types';
+import { LegalCheckboxes, type LegalChoices } from '@/components/legal-checkboxes';
 
 function RegisterForm() {
   const { register, demoLogin } = useAuth();
@@ -22,6 +23,7 @@ function RegisterForm() {
     licenseNumber: '',
     phone: '',
   });
+  const [legal, setLegal] = useState<LegalChoices>({ acceptTerms: false, acceptHealthData: false });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState<string | null>(null);
@@ -44,9 +46,13 @@ function RegisterForm() {
       setError('Ingresá un teléfono de contacto: tu médico lo va a usar si necesita comunicarse con vos.');
       return;
     }
+    if (!legal.acceptTerms || (role === 'PATIENT' && !legal.acceptHealthData)) {
+      setError('Para crear la cuenta tenés que marcar las casillas de aceptación.');
+      return;
+    }
     setLoading(true);
     try {
-      setRegistered(await register({ ...form, role }));
+      setRegistered(await register({ ...form, role, acceptTerms: legal.acceptTerms, acceptHealthData: role === 'PATIENT' && legal.acceptHealthData }));
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No pudimos crear la cuenta.');
     } finally {
@@ -157,6 +163,8 @@ function RegisterForm() {
               <Input id="license" required value={form.licenseNumber} onChange={set('licenseNumber')} />
             </Field>
           )}
+
+          <LegalCheckboxes value={legal} onChange={setLegal} healthData={role === 'PATIENT'} />
 
           {error && (
             <p role="alert" className="rounded-lg bg-danger-50 px-3 py-2.5 text-sm text-danger-700">

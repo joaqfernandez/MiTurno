@@ -75,3 +75,13 @@ def test_development_mailbox_defaults_only_outside_production(monkeypatch):
         monkeypatch.setenv(name, PRODUCTION[key])
     monkeypatch.setenv("APP_ENV", "production")
     assert Settings.load().mailbox_dir == ""
+
+
+def test_production_does_not_publish_the_endpoint_listing(system):
+    # El listado de endpoints ayuda a desarrollar; en producción no se le regala a quien explora la API.
+    from fastapi.testclient import TestClient
+    from app.main import create_app
+    with TestClient(create_app(settings=settings(**PRODUCTION))) as client:
+        for path in ("/docs", "/redoc", "/openapi.json"):
+            assert client.get(path).status_code == 404, path
+    assert system.client.get("/openapi.json").status_code == 200

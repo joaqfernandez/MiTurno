@@ -25,7 +25,7 @@ function LoginForm() {
   const [resent, setResent] = useState<string | null>(null);
 
   function goAfterLogin(session: Session) {
-    router.push(returnTo ?? (session.role === 'ADMIN' ? '/admin' : session.role === 'DOCTOR' ? '/panel' : '/mis-turnos'));
+    router.push(session.acceptancePending ? '/legal/aceptar' : returnTo ?? (session.role === 'ADMIN' ? '/admin' : session.role === 'DOCTOR' ? '/panel' : '/mis-turnos'));
   }
 
   async function submit(e: React.FormEvent) {

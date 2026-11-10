@@ -46,6 +46,11 @@ test('new patient must confirm the email before logging in', async ({ page, requ
   await page.getByRole('textbox', { name: 'Email', exact: true }).fill(email);
   await page.getByLabel(/Contraseña/).fill('Clave-paciente-2026');
   await page.getByLabel(/Teléfono/).fill('11 2345 6789');
+  // Sin las casillas marcadas la cuenta no se crea.
+  await page.locator('form').getByRole('button', { name: 'Crear cuenta' }).click();
+  await expect(page.locator('form').getByRole('alert')).toContainText('casillas de aceptación');
+  await page.getByLabel(/Acepto los términos y condiciones/).check();
+  await page.getByLabel(/Autorizo a MiTurno/).check();
   await page.locator('form').getByRole('button', { name: 'Crear cuenta' }).click();
   await expect(page.getByRole('status')).toContainText('Revisá tu correo');
 

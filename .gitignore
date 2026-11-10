@@ -15,3 +15,5 @@ playwright-report/
 .claude/skills/
 .claude/settings.local.json
 apps/web/next-env.d.ts
+# Planificación interna (precios, planes): no se publica, el repositorio es público.
+docs/privado/

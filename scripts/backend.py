@@ -43,6 +43,7 @@ def main():
         "test": ["-m", "pytest"],
         "test-pg": ["-m", "pytest"],
         "worker": ["-m", "app.worker"],
+        "create-admin": ["-m", "app.create_admin"],
     }
     if action not in commands:
         raise SystemExit(f"Comando desconocido: {action}")

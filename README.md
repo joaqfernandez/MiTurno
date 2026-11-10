@@ -36,6 +36,8 @@ npm run db:seed
 npm run dev
 ```
 
+**Administrador real (staging y producción):** `npm run admin:create -- tu@email.com`, con el worker corriendo. Crea la cuenta sin contraseña y envía a ese email el link para elegirla (vence en 30 minutos; si vence, usar «¿Olvidaste tu contraseña?»). No hay ninguna pantalla que cree administradores y el comando no convierte cuentas de paciente o médico. El administrador ve `/admin` (números, aprobación de médicos, envíos); no puede leer historias clínicas.
+
 `setup:api` instala dependencias y genera `apps/api-python/.env` con secretos aleatorios si no existe. El seed conserva los datos si ya fue cargado; no reinicia tus cambios. Está bloqueado en producción. PostgreSQL usa puerto **55432**, base **miturno_python** y volumen independiente: no reemplaza la base anterior.
 
 Si no inicia, verificá Docker y que 3000/3001 estén libres. Probá `npm run dev:api`, `npm run dev:web` y `npm run worker:api` en terminales separadas para identificar el proceso que falla. Salud: http://localhost:3000/api/health. Documentación de endpoints: http://localhost:3000/docs.
