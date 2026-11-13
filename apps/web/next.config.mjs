@@ -1,4 +1,9 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 const isDev = process.env.NODE_ENV === 'development';
+// Raíz del monorepo: ahí están package-lock.json y node_modules.
+const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 /** Origen de la API cuando el navegador la llama directamente (otro dominio); vacío si se usa el proxy /api. */
 function apiOrigin() {
@@ -40,6 +45,9 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 export default {
+  // Para la imagen Docker (apps/web/Dockerfile): genera .next/standalone con solo lo necesario para correr.
+  output: 'standalone',
+  outputFileTracingRoot: repoRoot,
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];

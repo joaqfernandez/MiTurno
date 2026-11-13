@@ -73,6 +73,7 @@ Crean y eliminan bases exclusivas de prueba; no modifican la demo. Los tests de 
 - [Migración, evidencias y límites](docs/MIGRACION_PYTHON.md)
 - [Roadmap y deuda pendiente](docs/ROADMAP.md)
 - [Camino a la beta cerrada](docs/BETA.md)
+- [Desplegar en Railway: servicios, variables, backups y restauración](docs/DEPLOY.md)
 - [Auditoría histórica del backend anterior](docs/AUDITORIA.md)
 
 Pagos, Google Calendar y notificaciones tienen adaptadores implementados, pero necesitan credenciales y validación con los proveedores. Sin configuración no se simulan cobros ni envíos exitosos. Adjuntos y exportación PDF siguen pendientes. Esta migración no equivale a una habilitación para producción.

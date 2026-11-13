@@ -1,0 +1,20 @@
+# Contexto de la imagen de la web (apps/web/Dockerfile se construye desde la raíz).
+# Lista cerrada: solo entra lo necesario para compilar Next.js. Nunca archivos .env.
+*
+!package.json
+!package-lock.json
+!apps/
+apps/*
+!apps/web/
+apps/web/node_modules/
+apps/web/.next/
+apps/web/.next-e2e/
+apps/web/e2e/
+apps/web/test/
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/playwright.config.ts
+apps/web/tsconfig.tsbuildinfo
+apps/web/Dockerfile
+**/.env
+**/.env.*

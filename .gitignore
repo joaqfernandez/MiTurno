@@ -17,3 +17,5 @@ playwright-report/
 apps/web/next-env.d.ts
 # Planificación interna (precios, planes): no se publica, el repositorio es público.
 docs/privado/
+# Credenciales de R2 para el simulacro de restauración (docs/DEPLOY.md).
+infra/backup/restore.env
