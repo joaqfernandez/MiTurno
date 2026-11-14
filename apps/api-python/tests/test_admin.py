@@ -4,8 +4,10 @@ Decisiones del fundador (2026-11-10): el administrador no lee historias clínica
 desde el servidor y la contraseña la elige él mismo con un link de un solo uso; las analíticas muestran
 totales y datos de profesionales, nunca filas de pacientes.
 """
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 import json
+from zoneinfo import ZoneInfo
 import pytest
 from sqlalchemy import func, select
 from app.analytics import age_group
@@ -104,9 +106,9 @@ def test_analytics_count_real_data_without_exposing_patients(system):
     second = reserve(system, "other")
     assert first.status_code == second.status_code == 201
     assert system.client.delete(f"/api/appointments/{second.json()['id']}", headers=system.headers("other")).status_code == 200
+    past = datetime.now(UTC) - timedelta(days=3)
     with system.database.transaction() as db:
-        db.add(Appointment(patientId="patient-own", doctorId="doctor", status="COMPLETED",
-                           startAt=datetime.now(UTC) - timedelta(days=3), endAt=datetime.now(UTC) - timedelta(days=3) + timedelta(minutes=30)))
+        db.add(Appointment(patientId="patient-own", doctorId="doctor", status="COMPLETED", startAt=past, endAt=past + timedelta(minutes=30)))
 
     response = system.client.get("/api/admin/analytics", headers=system.headers("admin"))
     assert response.status_code == 200, response.text
@@ -124,7 +126,17 @@ def test_analytics_count_real_data_without_exposing_patients(system):
     assert ages["30 a 44"] == 1 and ages["Sin dato"] == 1 and sum(ages.values()) == 2
     assert count(data["patientsByInsurance"]) == {"Osde 210": 2}
     assert len(data["weekly"]) == 12 and [row["week"] for row in data["weekly"]] == sorted(row["week"] for row in data["weekly"])
-    assert sum(row["booked"] for row in data["weekly"]) == 2 and sum(row["cancelled"] for row in data["weekly"]) == 1
+    # Cada turno cuenta en la semana de su fecha (lunes, calendario de Argentina). La tabla llega hasta la semana en curso:
+    # los dos turnos reservados toman el próximo horario libre, que un viernes a la tarde o un fin de semana ya es de la
+    # semana siguiente y todavía no figura. Por eso se compara semana por semana y no un total fijo.
+    expected = Counter()
+    for start, kind in ((first.json()["startAt"], "booked"), (second.json()["startAt"], "cancelled"), (past.isoformat(), "booked")):
+        local = datetime.fromisoformat(start).astimezone(ZoneInfo("America/Argentina/Buenos_Aires")).date()
+        expected[((local - timedelta(days=local.weekday())).isoformat(), kind)] += 1
+    assert [(row["booked"], row["cancelled"]) for row in data["weekly"]] == [
+        (expected[(row["week"], "booked")], expected[(row["week"], "cancelled")]) for row in data["weekly"]]
+    # El turno de hace tres días siempre está dentro de la tabla: la comparación nunca es entre tablas vacías.
+    assert sum(row["booked"] for row in data["weekly"]) >= 1
     assert data["weekly"][-1]["patients"] == 2 and data["weekly"][-1]["doctors"] == 2
     doctors = {row["email"]: row for row in data["doctors"]}
     assert doctors["doctor@example.com"] | {"createdAt": None} == {
